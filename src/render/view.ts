@@ -21,6 +21,7 @@ import { createParallax } from './parallax';
 import { PodView } from './podView';
 import { bindResize, createRenderer } from './renderer';
 import { createScene } from './scene';
+import { StoryView } from './storyView';
 
 /** Blocks of rock and sky the camera may show beyond the world's edges. */
 const EDGE_MARGIN = 1;
@@ -46,6 +47,7 @@ export class GameView {
   private readonly blast = new Burst(0.45);
   private readonly effects: FeelEffects;
   private readonly shake = new Shake();
+  private readonly story: StoryView;
   private readonly projected = new Vector3();
   private readonly borders: ReturnType<typeof createChunkBorders>;
   private cameraX: number;
@@ -75,6 +77,7 @@ export class GameView {
     this.pod = new PodView(settings.pod.halfSize);
     this.effects = new FeelEffects(state, settings, events);
     this.borders = createChunkBorders(state.grid);
+    this.story = new StoryView(state, this.shake, events);
     this.scene.add(
       this.borders,
       this.chunks.group,
@@ -85,6 +88,7 @@ export class GameView {
       this.burst.mesh,
       this.blast.mesh,
       this.effects.group,
+      this.story.group,
     );
     this.cameraX = state.pod.x;
     this.cameraY = state.pod.y;
@@ -105,6 +109,9 @@ export class GameView {
     events.on('Rescued', () => this.snapCamera());
     events.on('Respawned', () => this.snapCamera());
     events.on('Teleported', () => this.snapCamera());
+    // Every escape starts by the Heart, the first one included (§7).
+    events.on('EscapeStarted', () => this.snapCamera());
+    events.on('FinaleAbandoned', () => this.snapCamera());
   }
 
   /** Jumps the camera to the pod, e.g. after a teleport. */
@@ -163,6 +170,7 @@ export class GameView {
     this.blast.update(frameSeconds);
     this.effects.update(frameSeconds);
     this.updateCamera(alpha, frameSeconds, lift);
+    this.story.update(paused ? 0 : frameSeconds, this.cameraX, this.cameraY);
     this.chunks.update(rowOf(this.cameraY));
     const { grid, stats } = this.state;
     this.lighting.update(

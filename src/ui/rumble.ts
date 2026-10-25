@@ -1,6 +1,7 @@
 import type { EventBus } from '../core/events';
 import type { GamepadReader } from '../core/gamepad';
 import type { FeelConfig } from '../data/feel';
+import { QUAKE } from '../data/story';
 import type { GameEvents } from '../sim/events';
 import type { GameState } from '../sim/game';
 
@@ -9,7 +10,8 @@ const DRILL_PULSE = 0.18;
 
 /**
  * Rumble (GAME_SPEC §5.9): soft pulses while drilling, a hard jolt for explosions, a bump for
- * hard landings and damage. Silent where the browser has no vibrationActuator.
+ * hard landings and damage, a long shake for quakes. Silent where the browser has no
+ * vibrationActuator.
  */
 export class Rumble {
   private sinceDrillPulse = 0;
@@ -33,6 +35,10 @@ export class Rumble {
       if (source === 'fall' || source === 'gas') on(0.4, 0.4, 150);
     });
     events.on('MineralCollected', () => on(0.25, 0, 60));
+    // The story's big moments (§7): a quake, the core breaking open, the Heart catching fire.
+    events.on('Earthquake', () => on(0.7, 0.6, QUAKE.seconds * 1000));
+    events.on('Collapse', () => on(0.4, 0.5, 300));
+    events.on('HeartIgnited', () => on(0.5, 0.3, 900));
   }
 
   /** Pulses while drilling; nothing while a menu stops the game (`paused`). */

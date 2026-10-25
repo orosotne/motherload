@@ -8,6 +8,7 @@ import { refuel, refuelOffer, refuelQuote, sellAll } from '../sim/economy';
 import type { GameEvents } from '../sim/events';
 import type { GameState } from '../sim/game';
 import type { PanelView } from './panel';
+import { PORTRAITS } from './portraits';
 import { supplyDepot } from './supply';
 import { workshop } from './workshop';
 
@@ -19,6 +20,8 @@ export interface ShopContext {
   events: EventBus<GameEvents>;
   /** Feedback line, kept between redraws of the panel. */
   note: { text: string };
+  /** Mira keeps the Album of relics (§7). */
+  openAlbum?: () => void;
 }
 
 function fuelStation({ state, events, note }: ShopContext): ShopContent {
@@ -78,8 +81,9 @@ function cargoList(state: GameState): HTMLElement {
   return list;
 }
 
-function buyer({ state, events, note }: ShopContext): ShopContent {
+function buyer({ state, events, note, openAlbum }: ShopContext): ShopContent {
   const units = cargoUnits(state.cargo);
+  const relics = state.relics.filter(Boolean).length;
   return {
     line: units > 0 ? t('buyer.greeting') : t('buyer.empty'),
     body: cargoList(state),
@@ -94,9 +98,21 @@ function buyer({ state, events, note }: ShopContext): ShopContent {
           note.text = t('buyer.sold', { units: result.units, value: money(result.value) });
         },
       },
+      {
+        label: t('buyer.album'),
+        detail: `${relics} / ${state.relics.length}`,
+        run: () => openAlbum?.(),
+      },
     ],
   };
 }
+
+/** Pip runs the fuel station, Mira the exchange and Gus the workshop (§7). */
+const OWNERS: Partial<Record<BuildingId, string>> = {
+  fuel: PORTRAITS.pip,
+  buyer: PORTRAITS.mira,
+  workshop: PORTRAITS.gus,
+};
 
 /** The panel of a surface building, drawn from the current state (§3, §6). */
 export function shopView(id: BuildingId, context: ShopContext): PanelView {
@@ -110,6 +126,7 @@ export function shopView(id: BuildingId, context: ShopContext): PanelView {
   return {
     title: building ? t(building.key as TextKey) : id,
     color: building?.signColor ?? '#ffffff',
+    portrait: OWNERS[id],
     ...content,
   };
 }

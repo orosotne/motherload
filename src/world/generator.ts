@@ -13,6 +13,7 @@ import { WORLD } from '../data/world';
 import { ZONES, zoneAt } from '../data/zones';
 import { Grid } from './grid';
 import { coolLava, placeGas, placeLava } from './hazardGen';
+import { carveHeartChamber } from './heartGen';
 import { findPathToBottom } from './pathCheck';
 import { placeRelics } from './relicGen';
 
@@ -30,7 +31,7 @@ interface Barrier {
  * Builds the world from a seed (GAME_SPEC §4): the same seed always gives the same world.
  * Zones of base material, a flat town plateau with rolling terrain beside it, caves, short
  * corestone barriers, lava and gas, ore by the mineral table, a guaranteed way down to the
- * bottom, and the ten relics where the pod can reach them.
+ * bottom, the Heart's chamber there, and the ten relics where the pod can reach them.
  *
  * Saves store only the cells changed since generation, so any change here alters the worlds of
  * existing saves: bump WORLD_VERSION with it.
@@ -45,12 +46,13 @@ export function generateWorld(seed: number): Grid {
   placeGas(grid, new Rng(mixSeed(seed, SALT.gas)));
   placeOres(grid, new Rng(mixSeed(seed, SALT.ores)));
   keepBottomReachable(grid, barriers);
+  carveHeartChamber(grid);
   placeRelics(grid, new Rng(mixSeed(seed, SALT.relics)));
   return grid;
 }
 
 /** Version of the generator's output; saves from another version cannot reuse their world. */
-export const WORLD_VERSION = 1;
+export const WORLD_VERSION = 2;
 
 function fillZones(grid: Grid): void {
   for (let row = 0; row < grid.height; row++) {

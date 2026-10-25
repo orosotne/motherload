@@ -198,3 +198,54 @@ Malé rozhodnutia, ktoré GAME_SPEC.md nechala otvorené (§11.7). Väčšie zme
 
 - **Draw calls** sú v hre okolo 100 z rozpočtu 200, 170 až 220 tisíc trojuholníkov. Chunky sa orezávajú podľa svojich hraníc.
 - **60 fps na M1** sa v tomto prostredí overiť nedá: prehliadač tu kreslí softvérovo, bez grafickej karty, takže namerané fps o M1 nič nehovoria. Treba to overiť na Macu.
+
+## F5 Príbeh (2026-10-25)
+
+### Rádio a postavy
+
+- **Okno rádia** je vľavo dole: portrét, meno, text sa vypisuje 42 znakov za sekundu a potom chvíľu ostane. Najviac 110 znakov, teda dva riadky; test to stráži pre všetky správy v oboch jazykoch.
+- **Preskočenie:** Enter, tlačidlo B alebo klik. Prvé stlačenie dopíše text, druhé okno zavrie. Správy čakajú vo fronte a po 30 s čakania z nej vypadnú, aby rada o prehriatí neprišla až na povrchu.
+- **Blokujúca** je len jedna správa, pri zapálení Srdca. Hru vtedy aj tak drží simulácia 3,5 s, takže okno len skočí do stredu.
+- **Portréty** sú SVG tváre v štýle hry. Pip hovorí pípnutiami (sú v hlavičke) a text je titulok kurzívou. Hlas z hlbín nemá tvár, len šum a žeravé srdce. Portrét majiteľa je aj v hlavičke jeho obchodu.
+- **Čo spúšťa správy:**
+  - Začiatok hry: Gus, Mira (legenda o Srdci) a Pip.
+  - Hĺbka 100, 400, 900, 1 400 a 1 900 m. Kto preskočí mílnik (napríklad kotvou), počuje len najhlbší.
+  - Prvý nález každého z 9 minerálov: komentár Miry.
+  - Prvá nehoda každého druhu: pád, plyn, láva, prehriatie, odťahovanie, zničenie, plný náklad, málo paliva. K tomu prvý upgrade.
+  - Prvý vstup do pásma, od pásma 3 aj Hlas z hlbín: najprv šum, potom úlomky slov.
+  - Každá relikvia: komentár Miry.
+- **Režisér** (`src/story/director.ts`) počúva udalosti simulácie a zapisuje iba zoznam odohraných správ. Žiadne pravidlo hry ho nečíta, takže simulácia beží rovnako s ním aj bez neho; test to overuje.
+
+### Album relikvií
+
+- **Album** je v pauze a u Miry vo Výkupe. Nájdená relikvia má kartu s textom a výber karty ukáže komentár Miry. Nenájdená ukazuje len hĺbku.
+- **Príbeh relikvií** odhaľuje Staviteľov, ktorí postavili Srdce, aby planéta nevychladla, a nechali ho tomu, kto príde po nich (§7, oblúk 2 a 3).
+
+### Zemetrasenia
+
+- **Prvý vstup do pásma 3, 4 a 5:** 2 s trasenia, prach, rumble a rádio, bez poškodenia.
+- **Nová jaskyňa** je puklina široká 2 bloky a dlhá 18 až 28 riadkov. Začína 4 riadky pod modulom, najviac 6 stĺpcov bokom, a končí pred komnatou Srdca. Miesto určuje seed, takže svet praskne vždy rovnako. Rudu, relikvie a nerozbitné bloky necháva tak.
+
+### Finále
+
+- **Komnata Srdca** je v riadkoch 489 až 497 (stĺpce 14 až 25) a Srdce zaberá 2 × 2 bloky na jej dne. Generátor ju vyhĺbi vždy a overí, že sa k nej dá prevŕtať. Preto sa zvýšila verzia generátora na 2 a staré uložené hry stratia vykopané bunky, nie postup.
+- **Zapálenie:** stačí stáť pri Srdci so 6 relikviami a stlačiť E (ovládač Y). HUD inak ukáže, koľko relikvií chýba.
+- **Útek:**
+  - Srdce horí 3,5 s, potom sa modul objaví pri ňom s plnou nádržou a trupom.
+  - Láva čaká 5 s a potom stúpa rovnomerne tak, aby bola na povrchu presne vtedy, keď vyprší čas.
+  - Každých 6 s sa nad modulom prelomí kus jadra (3 × 3, len obyčajná skala): cesta sa mení, ale nikdy nezavrie.
+  - Maják počas úteku nefunguje, inak by útek preskočil.
+  - Hore ukazuje odpočet a vzdialenosť lávy.
+- **Útek sa neukladá.** Po načítaní je hra pred zapálením Srdca.
+- **Keď láva vyhrá** (alebo modul zničí teplo), útek sa začne znova pri Srdci a láva dá o 15 s viac. Panel ponúkne aj bezplatné odtiahnutie na stanicu: Srdce potom zas pohasne a počká. Bez tejto voľby by slabý stroj ostal vo finále navždy (pilier 4).
+- **Balans:** motor T4 (7 blokov/s) to stihne na prvý pokus, T3 na druhý. To sedí s modelom ekonomiky, ktorý počíta s T4 pred finále. Testy to overujú na celom svete.
+
+### Koniec
+
+- **Po výlete z jadra** hrajú fanfáry a o 2,5 s sa ukáže záver: planéta rozkvitne, na povrchu vyrastú kvety, nad stanicou svietia lampióny a na oblohe je ohňostroj. Na povrchu hrá nová, slávnostná hudba.
+- **Epilóg** je pre všetkých 10 relikvií. Kto ich má menej, dozvie sa, že epilóg čaká. Nájdenie poslednej relikvie po konci ho ukáže dodatočne a Album ho má ako ďalšiu kartu.
+- **Potom** sa dá ťažiť ďalej v tom istom svete, alebo začať novú hru s novým seedom (záver a pauza, potvrdzuje sa druhým stlačením).
+
+### Ukladanie
+
+- **Schéma 2** pridáva príbeh: odohrané správy, zemetrasenia a koniec. Hra uložená vo verzii 1 dostane príbeh podľa toho, čo už prežila: úvod, pásma, ktoré dosiahla, a nájdené relikvie sa už neozvú a zemetrasenia sa neopakujú.

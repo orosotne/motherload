@@ -61,6 +61,7 @@ export function serialize(state: GameState, baseline: WorldBaseline, now = new D
     heat: state.heat,
     relics: [...state.relics],
     deepestZone: state.deepestZone,
+    story: { ...state.story, seen: [...state.story.seen] },
     world: state.grid.diff(baseline),
   };
 }
@@ -101,6 +102,7 @@ export function restore(
   state.heat = data.heat;
   state.relics = state.relics.map((_, index) => data.relics[index] === true);
   state.deepestZone = data.deepestZone;
+  state.story = { ...data.story, seen: [...data.story.seen] };
   const pod = createPod(0, 0, settings.pod.halfSize);
   pod.x = data.pod.x;
   pod.y = data.pod.y;

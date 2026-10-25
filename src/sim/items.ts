@@ -55,8 +55,11 @@ function refusal(state: GameState, slot: Slot): ItemRefusal | null {
       return state.hull >= state.stats.maxHull ? 'hullFull' : null;
     case 'charge':
     case 'megaCharge':
+      if (pod.drill) return 'busy';
+      return surface ? 'surface' : null;
     case 'beacon':
       if (pod.drill) return 'busy';
+      if (state.finale) return 'escape';
       return surface ? 'surface' : null;
     case 'anchor':
       if (pod.drill) return 'busy';

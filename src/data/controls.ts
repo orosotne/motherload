@@ -7,6 +7,8 @@ export const ACTIONS = [
   'use',
   'enter',
   'pause',
+  /** Shows a radio message whole, then closes it (§7). */
+  'skip',
   'slot1',
   'slot2',
   'slot3',
@@ -35,6 +37,8 @@ export const KEYBOARD: Readonly<Record<string, Action>> = {
   KeyF: 'use',
   KeyE: 'enter',
   Escape: 'pause',
+  Enter: 'skip',
+  NumpadEnter: 'skip',
   Digit1: 'slot1',
   Digit2: 'slot2',
   Digit3: 'slot3',
@@ -45,6 +49,7 @@ export const KEYBOARD: Readonly<Record<string, Action>> = {
 /** Gamepad buttons in the standard mapping (§5) and the actions they trigger in play. */
 export const GAMEPAD_BUTTONS: Readonly<Record<number, Action>> = {
   0: 'up',
+  1: 'skip',
   2: 'use',
   3: 'enter',
   4: 'slotPrev',

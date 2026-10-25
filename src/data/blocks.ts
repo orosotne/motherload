@@ -26,6 +26,8 @@ export const Block = {
   Relic: 10,
   /** World border: returned for cells outside the grid, never stored in it. */
   Bedrock: 11,
+  /** Srdce Tumbry: the finale's goal in the core (§7). Cannot be drilled or blasted. */
+  Heart: 12,
 } as const;
 
 export type BlockId = (typeof Block)[keyof typeof Block];
@@ -58,6 +60,7 @@ export const BLOCKS: Readonly<Record<BlockId, BlockInfo>> = {
   [Block.Ore]: { solid: true, hardness: { kind: 'zone', bonus: 0.3 } },
   [Block.Relic]: { solid: true, hardness: { kind: 'fixed', value: 1.5 } },
   [Block.Bedrock]: { solid: true, hardness: NONE },
+  [Block.Heart]: { solid: true, hardness: NONE },
 };
 
 export function isSolid(block: BlockId): boolean {

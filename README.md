@@ -26,7 +26,8 @@ Potom otvor http://localhost:5173 v Chrome alebo Safari.
 | Esc alebo E          | zatvorí obchod                            |
 | 1 až 5               | výber slotu vybavenia                     |
 | F                    | použije vybavenie z vybraného slotu       |
-| Esc                  | pauza: hlasitosť, jazyk, ovládanie        |
+| Enter                | dopíše a potom zavrie správu z rádia      |
+| Esc                  | pauza: Album, hlasitosť, jazyk, nová hra  |
 
 Nahor ani vo vzduchu sa vŕtať nedá. V obchode vyberáš šípkami alebo WASD a potvrdzuješ Enterom či medzerníkom.
 
@@ -40,6 +41,7 @@ Funguje každý ovládač so štandardným mapovaním (Joy-Con, Pro Controller, 
 | spodné tlačidlo (A / ×) | let                            |
 | ľavé tlačidlo (X / □)   | použiť vybavenie               |
 | horné tlačidlo (Y / △)  | vstup do budovy                |
+| pravé tlačidlo (B / ○)  | preskočí správu z rádia        |
 | L / R                   | výber slotu                    |
 | Start                   | pauza                          |
 
@@ -63,7 +65,15 @@ Keď minieš palivo, dron ťa odtiahne k Pipovi za 15 % hotovosti a polovicu ná
 - **Teplo:** pod bezpečnou hĺbkou chladenia sa plní ukazovateľ prehriatia, pri 100 % trup stráca 2 HP za sekundu.
 - **Relikvie** sú v pevných hĺbkach a každá prinesie bonus.
 
-Hra sa ukladá sama: každých 10 sekúnd, po odchode z obchodu a pri zatvorení stránky. Po načítaní hra pokračuje presne tam, kde prestala.
+### Príbeh
+
+- **Rádio** vľavo dole: Gus, Mira, Pip a od pásma 3 aj tajomný Hlas z hlbín. Ozvú sa pri hĺbkových mílnikoch, prvom náleze minerálu, prvej nehode a relikviách. Hra pritom nestojí.
+- **Album relikvií** je v pauze a u Miry. Každá relikvia má kartu a Mira k nej má čo povedať.
+- **Zemetrasenie** pri prvom vstupe do pásma 3, 4 a 5 neublíži, ale otvorí pod tebou novú jaskyňu.
+- **Srdce Tumbry** čaká na dne sveta (okolo 1 990 m). So 6 relikviami ho pri ňom zapáliš klávesom E. Potom máš 90 sekúnd na útek hore pred stúpajúcou lávou. Ak to nestihneš, skúsiš znova s väčšou rezervou, alebo sa dáš odtiahnuť na stanicu a vrátiš sa s lepším strojom.
+- **Koniec:** planéta rozkvitne a stanica oslavuje. Všetkých 10 relikvií odomkne epilóg. Potom môžeš ťažiť ďalej, alebo začať novú hru v novom svete.
+
+Hra sa ukladá sama: každých 10 sekúnd, po odchode z obchodu a pri zatvorení stránky. Útek z jadra sa neukladá. Po načítaní hra pokračuje presne tam, kde prestala.
 
 ## Príkazy
 
@@ -85,6 +95,7 @@ V dev režime sú zapnuté vždy. V produkčnom builde ich zapneš pridaním `?d
 - **FPS meter** vľavo dole: fps, čas snímky, CPU čas a draw calls (rozpočet je 200).
 - **Panel** vpravo hore: pauza a krokovanie simulácie, spomalenie, interpolácia, kamera, peniaze, všetky upgrady, teleport do hĺbky, hranice chunkov a nová hra (zmaže uloženú).
 - **Game feel:** všetkých 12 prvkov zo špecifikácie (§5) má vlastný vypínač a hodnoty, aby sa dal porovnať rozdiel.
+- **Story:** všetkých 10 relikvií a teleport k Srdcu, na rýchle vyskúšanie finále.
 - **Kláves vľavo od 1** všetko skryje alebo znova zobrazí.
 
 ## Štruktúra

@@ -21,6 +21,8 @@ export interface PanelView {
   color: string;
   /** What the owner says. */
   line: string;
+  /** The owner's face from portraits.ts (§7); static markup only. */
+  portrait?: string;
   /** Optional content between the line and the actions. */
   body?: HTMLElement;
   actions: PanelAction[];
@@ -104,7 +106,15 @@ export class PanelHost {
 
     const head = element('header', 'panel-head');
     head.style.background = view.color;
-    head.append(element('h2', '', view.title), element('p', 'panel-line', view.line));
+    if (view.portrait) {
+      const portrait = element('span', 'panel-portrait');
+      // Static SVG from portraits.ts, never text from the game or the player.
+      portrait.innerHTML = view.portrait;
+      head.append(portrait);
+    }
+    const titles = element('div', 'panel-titles');
+    titles.append(element('h2', '', view.title), element('p', 'panel-line', view.line));
+    head.append(titles);
 
     const body = element('div', 'panel-body');
     if (view.body) body.append(view.body);
