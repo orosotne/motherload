@@ -8,7 +8,12 @@
 | [simplex-noise](https://github.com/jwagner/simplex-noise.js) | MIT     | Cave generation                |
 | [lil-gui](https://lil-gui.georgealways.com)                  | MIT     | Debug panel, debug builds only |
 
-Build and test tools (Vite, Vitest, TypeScript, ESLint, Prettier) are not shipped with the game.
+The macOS app wraps the same game in [Tauri](https://tauri.app) (MIT or Apache-2.0). Its Rust
+dependencies, pinned in `src-tauri/Cargo.lock`, come unchanged from crates.io under MIT,
+Apache-2.0, BSD, ISC, Zlib and Unicode licenses; a few are under MPL-2.0.
+
+Build and test tools (Vite, Vitest, TypeScript, ESLint, Prettier, the Tauri CLI) are not shipped
+with the game.
 
 ## Fonts
 
@@ -18,4 +23,6 @@ Build and test tools (Vite, Vitest, TypeScript, ESLint, Prettier) are not shippe
 
 ## Assets
 
-None yet. All models, materials and sounds are generated in code (GAME_SPEC §8).
+None from outside. All models, materials and sounds are generated in code (GAME_SPEC §8). The
+app icon (`src-tauri/app-icon.svg`) was drawn for this game; the files in `src-tauri/icons/` are
+made from it with `tauri icon`.
