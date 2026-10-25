@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Input } from '../src/core/input';
 
 function key(type: 'keydown' | 'keyup', code: string, repeat = false): Event {
@@ -58,6 +58,30 @@ describe('Input', () => {
     source.dispatchEvent(key('keydown', 'KeyA'));
     source.dispatchEvent(new Event('blur'));
     expect(input.sample().held.left).toBe(false);
+  });
+
+  it('releases a held key even when a text field has focus by then', () => {
+    class FakeElement extends EventTarget {
+      tagName = 'DIV';
+      isContentEditable = false;
+    }
+    vi.stubGlobal('HTMLElement', FakeElement);
+    try {
+      const element = new FakeElement();
+      const input = new Input(element);
+      element.dispatchEvent(key('keydown', 'KeyD'));
+      expect(input.sample().held.right).toBe(true);
+
+      element.tagName = 'INPUT';
+      element.dispatchEvent(key('keyup', 'KeyD'));
+      expect(input.sample().held.right).toBe(false);
+
+      // Typing into the field does not drive the pod.
+      element.dispatchEvent(key('keydown', 'KeyA'));
+      expect(input.sample().held.left).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('claims mapped keys from the page and leaves the others alone', () => {

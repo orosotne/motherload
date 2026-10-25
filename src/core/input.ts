@@ -63,13 +63,17 @@ export class Input {
 
   private onKey(event: KeyboardEvent, down: boolean): void {
     const action = KEYBOARD[event.code];
-    if (!action || isEditable(event.target)) return;
+    if (!action) return;
+    const editable = isEditable(event.target);
     // Arrows and space would otherwise scroll the page or press a focused button.
-    event.preventDefault();
+    if (!editable) event.preventDefault();
     if (!down) {
+      // A release always counts: the key may have been held for the game before a text field
+      // got focus, and must not stay stuck.
       this.heldKeys.delete(event.code);
       return;
     }
+    if (editable) return;
     if (!event.repeat) this.pressedSinceSample.add(action);
     this.heldKeys.add(event.code);
   }
