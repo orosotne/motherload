@@ -90,7 +90,9 @@ function finaleDive(bands: readonly Band[], stats: PodStats, shaftRow: number): 
 }
 
 /** Plays the game with the model: trips, purchases and relics until the finale (§6 targets). */
-export function simulateProgression(bands: readonly Band[]): Timeline {
+export function simulateProgression(measured: readonly Band[]): Timeline {
+  // Its own copy: the trips use the bands up.
+  const bands = measured.map((band) => ({ ...band }));
   const tiers = startTiers();
   let stats = statsFor(tiers);
   let seconds = 0;
@@ -118,6 +120,8 @@ export function simulateProgression(bands: readonly Band[]): Timeline {
     seconds += trip.seconds;
     cash += trip.net;
     trips++;
+    const band = bands[trip.band.index];
+    if (band && band.oreUnits > 0) band.left = Math.max(band.left - trip.units / band.oreUnits, 0);
     sincePurchase++;
     shaftRow = Math.max(shaftRow, trip.band.midRow);
     timeline.zoneMinutes[trip.band.zone] ??= seconds / 60;

@@ -8,7 +8,7 @@ import { startTiers, statsFor } from '../src/sim/stats';
 const bands = measureBands();
 
 describe('economy simulation (§6, npm run sim:economy)', () => {
-  it('meets every balance target', () => {
+  it('meets the balance targets of the early game', () => {
     const checks = checkTargets(simulateProgression(bands));
     const missed = checks.filter((check) => !check.ok).map((c) => `${c.name}: ${c.detail}`);
     expect(missed).toEqual([]);

@@ -97,8 +97,8 @@ export const FEEL: Readonly<FeelConfig> = {
     pitchBase: 70,
     pitchPerHardness: 28,
   },
-  // $350 and up: the five most valuable minerals, as $900 was with the spec's prices (DECISIONS).
-  hitstop: { enabled: true, ms: 60, minValue: 350 },
+  // $400 and up: the five most valuable minerals, as $900 was with the spec's prices (DECISIONS).
+  hitstop: { enabled: true, ms: 60, minValue: 400 },
   popup: { enabled: true, ms: 650 },
   shake: {
     enabled: true,

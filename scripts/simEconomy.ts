@@ -1,7 +1,7 @@
 /**
  * `npm run sim:economy` (GAME_SPEC §6): income per trip for every zone and tier, time to the
- * next purchase, and a whole game played by the model against the balance targets.
- * Exits with 1 when a target is missed.
+ * next purchase, and a whole game played by the model against the targets of the early game.
+ * Exits with 1 when a target is missed. The whole game is the playtest's (`npm run playtest`).
  */
 import { TIER_PRICES, UPGRADE_BRANCHES } from '../src/data/upgrades';
 
@@ -56,10 +56,14 @@ console.log('\nZones first reached:');
 for (const [zone, minutes] of Object.entries(timeline.zoneMinutes)) {
   console.log(`  zone ${zone}: ${minutes.toFixed(1)} min`);
 }
-if (timeline.stuck) console.log(`\nStopped early: ${timeline.stuck}`);
+const finale = timeline.finaleMinutes;
+console.log(
+  `\nFinale: ${finale === null ? `not reached, ${timeline.stuck ?? 'out of time'}` : `${finale.toFixed(1)} min`}` +
+    `; at most ${timeline.maxTripsPerPurchase} trips before a purchase`,
+);
 
 const checks = checkTargets(timeline);
-console.log('\nBalance targets (§6):');
+console.log('\nBalance targets of the early game (§6; the whole game: npm run playtest):');
 for (const check of checks)
   console.log(`  ${check.ok ? 'ok  ' : 'MISS'} ${check.name}: ${check.detail}`);
 process.exitCode = checks.every((check) => check.ok) ? 0 : 1;

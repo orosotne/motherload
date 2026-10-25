@@ -1,6 +1,7 @@
 /**
- * Assumptions of the economy simulation (`npm run sim:economy`, GAME_SPEC §6): how a typical
- * player plays, not rules of the game. Tuned against short playtests; see DECISIONS.md.
+ * Assumptions about players for the economy model (`npm run sim:economy`, GAME_SPEC §6) and the
+ * playtest (`npm run playtest`, F6): how a typical player plays, not rules of the game. See
+ * DECISIONS.md.
  */
 export const BALANCE = {
   /** Worlds measured for mineral, gas and cave statistics. */
@@ -42,9 +43,17 @@ export const BALANCE = {
   reachValue: 0.04,
   /** The simulation gives up after this long. */
   maxHours: 8,
+  /**
+   * How many times longer a player takes than the playtest bot, which sees through rock, never
+   * misses a landing and never stops to look around. An estimate until people play it (F6).
+   */
+  playerSlowdown: 2,
 } as const;
 
-/** Balance targets (§6), in minutes. */
+/**
+ * Balance targets (§6), in a player's minutes. The model checks the first upgrade and the zones;
+ * the bot playing the real game checks the finale and how often there is something to buy.
+ */
 export const BALANCE_TARGETS = {
   firstUpgradeMinutes: 5,
   firstUpgradeTrips: [2, 3] as const,
