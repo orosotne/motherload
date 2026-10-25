@@ -7,7 +7,7 @@ import type { GameEvents } from './sim/events';
 import { createGame, defaultSettings, stepGame } from './sim/game';
 import { createPod } from './sim/pod';
 import type { DebugTools } from './ui/debug/debugPanel';
-import { createTestWorld } from './world/generator';
+import { generateWorld } from './world/generator';
 
 /** Debug tools: always in dev mode; in a production build with ?debug, or #debug where the
  * query string never reaches the page (the claude.ai preview). */
@@ -21,7 +21,9 @@ function debugRequested(): boolean {
 /** Wires simulation, input, view and the game loop together. */
 export function startApp(canvas: HTMLCanvasElement): void {
   const settings = defaultSettings();
-  const state = createGame(createTestWorld(), settings);
+  // A fresh world each start until saves arrive in F3.
+  const seed = Math.floor(Math.random() * 2 ** 32);
+  const state = createGame(generateWorld(seed), settings, seed);
   const events = new EventBus<GameEvents>();
   const input = new Input(window);
   const view = new GameView(canvas, state, settings, events);
