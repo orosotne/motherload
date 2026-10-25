@@ -3,7 +3,15 @@ import { RENDER } from '../data/render';
 
 /** Creates the WebGL2 renderer on the game canvas. */
 export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
-  return new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: 'high-performance',
+  });
+  // Counters cover a whole frame, also once a frame needs several render passes (bloom, §8).
+  // The frame callback resets them.
+  renderer.info.autoReset = false;
+  return renderer;
 }
 
 /**
