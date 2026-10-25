@@ -148,3 +148,53 @@ Malé rozhodnutia, ktoré GAME_SPEC.md nechala otvorené (§11.7). Väčšie zme
 - **Výsledok modelu:** prvý upgrade po 2 výletoch (3,8 min), pásmo 2 za 6,5 min, pásmo 3 za 24 min, pásmo 4 za 60 min, finále za 186 min, medzi nákupmi najviac 3 výlety. Test `tests/balance.test.ts` stráži, že ciele platia.
 - **Finále v modeli** vyžaduje 6 relikvií, motor T4 (útek 90 s) a ponor ku dnu, pri ktorom teplo a plyn zoberú najviac 60 % trupu.
 - **Prah pre hitstop a záblesk (§5.5)** bol $900, teda päť najcennejších minerálov. S novými hodnotami bude v F4 $350, aby sa týkal tých istých piatich.
+
+## F4 Štýl a šťava (2026-10-25)
+
+### Grafika
+
+- **Toon shading:** všetky materiály sú `MeshToonMaterial` so spoločnou trojstupňovou mapou (tieň, polotón, svetlo).
+- **Zrezané hrany blokov** sú konvexný obal 24 bodov, 0,08 od každého rohu. Má 68 trojuholníkov s plochými normálami, takže hrana chytí svetlo ako ostrý pás. `RoundedBoxGeometry` mal 108 trojuholníkov a mäkké hrany.
+- **Obrysy** sú inverted hull: zadné steny tej istej geometrie posunuté pozdĺž normál vo vertex shaderi. Fungujú aj pre inštancované kryštály, ktoré zdieľajú matice s obrysom. Majú ich modul, minerály a relikvie (§8).
+- **Bloom len na žiariacej vrstve:** kryštály, láva, relikvie, plameň, iskry a záblesk sú vo vrstve 1. Tá sa vykreslí zvlášť, bez svetiel a hmly, rozmaže sa a pripočíta k obrazu. Ostatné objekty ju nezakrývajú. V 2,5D sú kryštály vždy na prednej stene, takže to nevadí.
+- **Svetlo a tma:** denné svetlo je plné do 22. riadka a pod 150 m (37. riadok) zmizne. Potom zostane slabé ambientné svetlo (0,12), svetlomet a mäkké svetlo okolo modulu.
+- **Svetlomet** svieti tam, kam modul vŕta alebo kam je otočený, s dosahom 1,35 × upgrade.
+- **Láva:** 8 najbližších lávových buniek dostane bodové svetlo. Počet svetiel sa nikdy nemení, aby sa počas hry neprekladali shadery.
+- **Tiene:** vrhá ich len slnko (jedno z dvoch povolených tieňových svetiel) a pod zemou sa vypne.
+- **Hmla** má farbu pásma a začína 20 jednotiek od kamery, takže hracia plocha zostane čistá a zadné steny sa stratia v opare.
+- **Parallax:** dve vrstvy skál v hĺbke −2,4 a −5,2 a stena v −9. V prvom pásme začínajú skaly a stena hlbšie, aby nevytŕčali nad horizont.
+- **Modul** je zložený z primitív: telo, kabína, kolesá, nádrž, bedňa, rebrá, tryska, svetlá a vrták. Tier trupu mení farbu (krémová, tyrkysová, oceľová, slivková, ružová, zlatá). Krémová je prvá preto, lebo oranžový modul sa strácal v oranžovej hline. Tier vrtáka mení dĺžku a farbu vrtáka, nádrž, náklad a motor menia veľkosť dielov, chladenie pridáva rebrá a svetlomet svetlá.
+- **Častice:** dve inštancované kocky, úlomky a žiariace iskry. Jeden výbuch tak stojí jeden draw call.
+
+### Game feel (§5)
+
+- **4 život vrtáka:** chvenie 0,035 bloku, 14 úlomkov za sekundu vo farbe bloku (ruda pridá farbu minerálu). Tón vŕtania je 70 Hz + 28 Hz za bod tvrdosti.
+- **5 hitstop:** hra stojí 60 ms reálneho času a zmeškaný čas sa nedobieha. Prah je $350, teda päť najcennejších minerálov ako pôvodných $900 (pozri F3).
+- **6 pop-up:** „+$350“ letí 650 ms k nákladu v HUD (Web Animations API).
+- **9 rumble:** jemné pulzy pri vŕtaní každých 0,18 s, silný otras pri výbuchu, náraz pri tvrdom dopade a poškodení.
+- **12 čitateľnosť:**
+  - Plyn má bublinky, ktoré pulzujú každá vlastným rytmom.
+  - Láva má hladinu nižšie ako blok a pulzujúci žiar.
+  - Jadrovec má nity.
+  - Po vypnutí sa líšia len farbou: plyn je trochu zelenší a láva je obyčajná oranžová kocka.
+- **Všetkých 12 prvkov** má v debug paneli vypínač a hlavné hodnoty.
+
+### Zvuk
+
+- **Efekty sú procedurálne** (oscilátory a filtrovaný šum, štýl jsfxr), nič nahraté. Zvuk má každá akcia: vŕtanie, dopad, cinknutie (stúpa s hodnotou, $25 nízko, $5 000 vysoko), syčanie, výbuch, varovanie paliva, klik v UI, motor, nákup, relikvia, maják a dron.
+- **Hudba je generovaná:**
+  - Na povrchu veselý durový motív.
+  - Pásmo 1 slnečné, 2 dórske a napäté, 3 lýdické a úžasné, 4 frýgické a nebezpečné, 5 mollové s tlkotom srdca.
+  - Medzi pásmami sa prelína 2,5 s.
+- **Mixer** (hlavná hlasitosť, hudba, efekty) je v pauze a pamätá si nastavenie. Zvuk sa zapne pri prvom stlačení klávesu, lebo prehliadače ho inak nepustia.
+
+### Ovládanie
+
+- **Ovládač** v štandardnom mapovaní (§5) sa číta pri každom kroku simulácie. L a R prepínajú sloty dookola.
+- **V obchodoch a v pauze** D-pad presúva fokus, spodné tlačidlo potvrdzuje, pravé a Start zatvárajú.
+- **Pauza (Esc, Start)** zastaví hru a ponúkne hlasitosť, jazyk a prehľad ovládania. Plné nastavenia a hlavné menu prídu v F6.
+
+### Výkon
+
+- **Draw calls** sú v hre okolo 100 z rozpočtu 200, 170 až 220 tisíc trojuholníkov. Chunky sa orezávajú podľa svojich hraníc.
+- **60 fps na M1** sa v tomto prostredí overiť nedá: prehliadač tu kreslí softvérovo, bez grafickej karty, takže namerané fps o M1 nič nehovoria. Treba to overiť na Macu.

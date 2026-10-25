@@ -26,8 +26,24 @@ Potom otvor http://localhost:5173 v Chrome alebo Safari.
 | Esc alebo E          | zatvorí obchod                            |
 | 1 až 5               | výber slotu vybavenia                     |
 | F                    | použije vybavenie z vybraného slotu       |
+| Esc                  | pauza: hlasitosť, jazyk, ovládanie        |
 
-Nahor ani vo vzduchu sa vŕtať nedá. V obchode vyberáš šípkami alebo WASD a potvrdzuješ Enterom či medzerníkom. Ovládač (gamepad) príde vo fáze F4.
+Nahor ani vo vzduchu sa vŕtať nedá. V obchode vyberáš šípkami alebo WASD a potvrdzuješ Enterom či medzerníkom.
+
+### Ovládač
+
+Funguje každý ovládač so štandardným mapovaním (Joy-Con, Pro Controller, Xbox, PlayStation). Pripoj ho a stlač ľubovoľné tlačidlo.
+
+| Ovládač                 | Akcia                          |
+| ----------------------- | ------------------------------ |
+| ľavá páčka alebo D-pad  | jazda, vŕtanie do strán a dole |
+| spodné tlačidlo (A / ×) | let                            |
+| ľavé tlačidlo (X / □)   | použiť vybavenie               |
+| horné tlačidlo (Y / △)  | vstup do budovy                |
+| L / R                   | výber slotu                    |
+| Start                   | pauza                          |
+
+V obchodoch a v pauze sa pohybuješ D-padom, spodným tlačidlom potvrdzuješ a pravým (B / ○) zatváraš. Kde to prehliadač podporuje, ovládač pri vŕtaní a výbuchoch vibruje.
 
 ## Ako sa hrá
 
@@ -67,7 +83,8 @@ Hra sa ukladá sama: každých 10 sekúnd, po odchode z obchodu a pri zatvorení
 V dev režime sú zapnuté vždy. V produkčnom builde ich zapneš pridaním `?debug` alebo `#debug` do adresy, napríklad http://localhost:4173/?debug.
 
 - **FPS meter** vľavo dole: fps, čas snímky, CPU čas a draw calls (rozpočet je 200).
-- **Panel** vpravo hore: pauza a krokovanie simulácie, spomalenie, interpolácia, kamera, game feel, peniaze, všetky upgrady, teleport do hĺbky a nová hra (zmaže uloženú).
+- **Panel** vpravo hore: pauza a krokovanie simulácie, spomalenie, interpolácia, kamera, peniaze, všetky upgrady, teleport do hĺbky, hranice chunkov a nová hra (zmaže uloženú).
+- **Game feel:** všetkých 12 prvkov zo špecifikácie (§5) má vlastný vypínač a hodnoty, aby sa dal porovnať rozdiel.
 - **Kláves vľavo od 1** všetko skryje alebo znova zobrazí.
 
 ## Štruktúra
