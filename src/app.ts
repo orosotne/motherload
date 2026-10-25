@@ -5,7 +5,7 @@ import type { BuildingId } from './data/buildings';
 import { Block } from './data/blocks';
 import { WORLD } from './data/world';
 import { GameView } from './render/view';
-import { newGame, restore, serialize } from './save/save';
+import { newGame, restore, serialize, settled } from './save/save';
 import { clearSave, readSave, writeSave, type SaveStorage } from './save/storage';
 import { buildingAt } from './sim/buildings';
 import type { GameEvents } from './sim/events';
@@ -62,11 +62,12 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   showNotices(events, new Toasts(ui));
   let debug: DebugTools | null = null;
 
-  // Saved at rest only: never mid-rescue, so a reload never repeats or skips a tow (§9.8).
+  // During a tow or a respawn the save holds its outcome, so a reload neither repeats nor
+  // skips it (§9.8).
   let keepSaving = true;
   const save = (): void => {
-    if (!storage || !keepSaving || state.status.kind !== 'play') return;
-    writeSave(serialize(state, baseline), storage);
+    if (!storage || !keepSaving) return;
+    writeSave(serialize(settled(state, settings.pod.halfSize), baseline), storage);
   };
   let sinceSave = 0;
   events.on('RelicFound', save);

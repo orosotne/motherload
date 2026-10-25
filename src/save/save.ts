@@ -1,9 +1,12 @@
 import type { BlockId } from '../data/blocks';
 import { POD } from '../data/pod';
 import { WORLD } from '../data/world';
+import { EventBus } from '../core/events';
 import { emptyCargo } from '../sim/cargo';
+import type { GameEvents } from '../sim/events';
 import { createGame, type GameState, type SimSettings } from '../sim/game';
 import { createPod, restY } from '../sim/pod';
+import { stepRecovery } from '../sim/recovery';
 import { statsFor } from '../sim/stats';
 import { generateWorld, WORLD_VERSION } from '../world/generator';
 import type { Grid } from '../world/grid';
@@ -11,6 +14,23 @@ import { SCHEMA_VERSION, type SaveData } from './schema';
 
 /** The world as generated, to compare against when saving. */
 export type WorldBaseline = ReturnType<Grid['snapshot']>;
+
+/**
+ * The game as it will be once a running rescue or respawn has finished, without touching the
+ * live game: what a save must hold, so closing the page during the tow neither skips the fee nor
+ * throws away what happened before the accident.
+ */
+export function settled(state: GameState, halfSize: number): GameState {
+  if (state.status.kind === 'play') return state;
+  const copy: GameState = {
+    ...state,
+    pod: { ...state.pod },
+    cargo: [...state.cargo],
+    status: { ...state.status, left: 0 },
+  };
+  stepRecovery(copy, 0, halfSize, new EventBus<GameEvents>());
+  return copy;
+}
 
 /**
  * A snapshot of the game for storage. A pod caught mid-drill is saved where the drilling began,

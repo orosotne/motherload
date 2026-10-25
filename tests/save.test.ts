@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Block } from '../src/data/blocks';
 import { migrate } from '../src/save/migrations';
-import { newGame, restore, serialize } from '../src/save/save';
+import { newGame, restore, serialize, settled } from '../src/save/save';
 import { SCHEMA_VERSION } from '../src/save/schema';
 import { readSave, writeSave, type SaveStorage } from '../src/save/storage';
 import { defaultSettings } from '../src/sim/game';
@@ -95,6 +95,32 @@ describe('saving (§9.8)', () => {
     state.pod.y -= 0.5;
     expect(serialize(state, baseline).pod.y).toBe(startY);
     expect(restore(serialize(state, baseline), settings).state.pod.drill).toBeNull();
+  });
+
+  it('saves a running tow as its outcome, so a reload neither skips nor repeats it', () => {
+    const { state, baseline, settings } = playedGame();
+    state.cash = 1000;
+    state.cargo.fill(0);
+    state.cargo[1] = 4;
+    state.status = { kind: 'rescue', left: 1.5 };
+    const data = serialize(settled(state, settings.pod.halfSize), baseline);
+    expect(data.cash).toBe(850);
+    expect(data.cargo[1]).toBe(2);
+    expect(data.pod.y).toBeGreaterThan(0);
+    // The live game goes on with its own tow.
+    expect(state.status.kind).toBe('rescue');
+    expect(state.cash).toBe(1000);
+    expect(state.cargo[1]).toBe(4);
+  });
+
+  it('saves a respawn as the new pod on the surface, without the cargo', () => {
+    const { state, baseline, settings } = playedGame();
+    state.cash = 1000;
+    state.status = { kind: 'respawn', left: 2 };
+    const data = serialize(settled(state, settings.pod.halfSize), baseline);
+    expect(data.cash).toBe(750);
+    expect(data.cargo.every((units) => units === 0)).toBe(true);
+    expect(data.hull).toBe(state.stats.maxHull);
   });
 
   it('starts over when the save is missing, damaged or from an unknown version', () => {
