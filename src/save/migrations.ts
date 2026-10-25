@@ -36,17 +36,22 @@ function tiers(raw: unknown): Record<UpgradeBranch, number> {
   return result;
 }
 
-function slots(raw: unknown): SaveData['slots'] {
+/**
+ * Equipment slots. An anchor set in a world from another generator version points into rock
+ * that was never dug there, so it comes back unset: the item stays, ready to be set again.
+ */
+function slots(raw: unknown, sameWorld: boolean): SaveData['slots'] {
   const source = Array.isArray(raw) ? raw : [];
   return Array.from({ length: SUPPLY.slots }, (_, index) => {
     const slot: unknown = source[index];
     if (!isRecord(slot) || !ITEM_IDS.includes(slot.item as ItemId)) return null;
-    const anchor = isRecord(slot.anchor)
-      ? {
-          col: whole(slot.anchor.col, 0, 0, WORLD.width - 1),
-          row: whole(slot.anchor.row, 0, 0, WORLD.height - 1),
-        }
-      : null;
+    const anchor =
+      sameWorld && isRecord(slot.anchor)
+        ? {
+            col: whole(slot.anchor.col, 0, 0, WORLD.width - 1),
+            row: whole(slot.anchor.row, 0, 0, WORLD.height - 1),
+          }
+        : null;
     return { item: slot.item as ItemId, anchor: slot.item === 'anchor' ? anchor : null };
   });
 }
@@ -140,7 +145,7 @@ function readCommon(raw: Raw): Omit<SaveData, 'story'> | null {
       id === 0 ? 0 : whole(cargo[id], 0, 0, 10_000),
     ),
     tiers: tiers(raw.tiers),
-    slots: slots(raw.slots),
+    slots: slots(raw.slots, sameWorld),
     selectedSlot: whole(raw.selectedSlot, 0, 0, SUPPLY.slots - 1),
     heat: finite(raw.heat, 0, 0, 1),
     relics: RELICS.depthsMeters.map((_, index) => relics[index] === true),

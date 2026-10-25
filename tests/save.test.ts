@@ -161,6 +161,9 @@ describe('saving (§9.8)', () => {
     expect(data?.world).toEqual([]);
     expect(data?.cash).toBe(4321);
     expect(data?.pod.y).toBeGreaterThan(0);
+    // The anchor pointed into a tunnel that is not there any more: kept, but unset.
+    expect(data?.slots[0]).toEqual({ item: 'anchor', anchor: null });
+    expect(data?.slots[3]).toEqual({ item: 'megaCharge', anchor: null });
   });
 
   it('copes with storage the browser refuses', () => {
