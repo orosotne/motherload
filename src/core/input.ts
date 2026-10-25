@@ -1,4 +1,5 @@
-import { ACTIONS, KEYBOARD, type Action } from '../data/controls';
+import { ACTIONS, KEYBOARD, type Action, type MenuCommand } from '../data/controls';
+import { GamepadReader } from './gamepad';
 
 export type ActionSet = Readonly<Record<Action, boolean>>;
 
@@ -28,14 +29,18 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /**
- * Keyboard input (GAME_SPEC §5). Collects key events between simulation ticks and hands the
- * simulation one {@link InputFrame} per tick, so a tap shorter than a tick is never lost.
+ * Keyboard and gamepad input (GAME_SPEC §5). Collects key events between simulation ticks and
+ * hands the simulation one {@link InputFrame} per tick, so a tap shorter than a tick is never
+ * lost. The gamepad is polled with each sample.
  */
 export class Input {
+  readonly pad: GamepadReader;
   private readonly heldKeys = new Set<string>();
   private readonly pressedSinceSample = new Set<Action>();
+  private readonly menuCommands = new Set<MenuCommand>();
 
-  constructor(source: EventTarget) {
+  constructor(source: EventTarget, pad = new GamepadReader()) {
+    this.pad = pad;
     source.addEventListener('keydown', (event) => this.onKey(event as KeyboardEvent, true));
     source.addEventListener('keyup', (event) => this.onKey(event as KeyboardEvent, false));
     // A key released while the window had no focus never sends keyup (Cmd+Tab on a Mac).
@@ -44,17 +49,28 @@ export class Input {
 
   /** Input for the next simulation tick; clears the record of presses. */
   sample(): InputFrame {
-    const held = new Set<Action>();
+    const pad = this.pad.poll();
+    for (const command of pad.menu) this.menuCommands.add(command);
+    const held = new Set<Action>(pad.held);
     for (const code of this.heldKeys) {
       const action = KEYBOARD[code];
       if (action) held.add(action);
     }
     const frame: InputFrame = {
       held: actionSet((action) => held.has(action)),
-      pressed: actionSet((action) => this.pressedSinceSample.has(action)),
+      pressed: actionSet(
+        (action) => this.pressedSinceSample.has(action) || pad.pressed.has(action),
+      ),
     };
     this.pressedSinceSample.clear();
     return frame;
+  }
+
+  /** Gamepad menu commands since the last call (D-pad, A, B, Start), for menus and panels. */
+  takeMenuCommands(): MenuCommand[] {
+    const commands = [...this.menuCommands];
+    this.menuCommands.clear();
+    return commands;
   }
 
   releaseAll(): void {
@@ -64,6 +80,7 @@ export class Input {
   /** Forgets presses not yet sampled, e.g. the key that just closed a menu. */
   clearPresses(): void {
     this.pressedSinceSample.clear();
+    this.menuCommands.clear();
   }
 
   private onKey(event: KeyboardEvent, down: boolean): void {

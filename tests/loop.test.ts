@@ -159,6 +159,18 @@ describe('GameLoop', () => {
     expect(calls).toEqual(['render', 'update', 'render', 'render']);
   });
 
+  it('holds the simulation still for a hitstop, then goes on without catching up', () => {
+    const { loop, frames, calls } = createLoop();
+    loop.start();
+    frames.fire(0);
+    loop.freeze(60);
+    frames.fire(2 * STEP_MS); // 33 ms frozen
+    frames.fire(4 * STEP_MS); // 66 ms: the freeze ends within this frame
+    frames.fire(5 * STEP_MS);
+
+    expect(calls).toEqual(['render', 'render', 'render', 'update', 'render']);
+  });
+
   it('scales simulated time with timeScale', () => {
     const { loop, frames, calls } = createLoop();
     loop.controls.timeScale = 0.5;
