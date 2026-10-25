@@ -21,11 +21,14 @@ const CELLS: Readonly<Record<string, BlockId>> = {
   '#': Block.Dirt,
   C: Block.Clay,
   X: Block.Corestone,
+  G: Block.Gas,
+  L: Block.Lava,
+  R: Block.Relic,
 };
 
 /**
- * Builds a grid from text rows: `#` dirt, `.` empty, `C` clay, `X` corestone, a digit is ore of
- * that mineral id. Row 0 comes first.
+ * Builds a grid from text rows: `#` dirt, `.` empty, `C` clay, `X` corestone, `G` gas, `L` lava,
+ * `R` relic, a digit is ore of that mineral id. Row 0 comes first.
  */
 export function gridFrom(rows: readonly string[], skyRows = 12): Grid {
   const grid = new Grid(rows[0]?.length ?? 0, rows.length, 20, skyRows);

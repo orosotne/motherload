@@ -12,10 +12,12 @@ import { MINERALS } from '../data/minerals';
 import { WORLD } from '../data/world';
 import { ZONES, zoneAt } from '../data/zones';
 import { Grid } from './grid';
+import { coolLava, placeGas, placeLava } from './hazardGen';
 import { findPathToBottom } from './pathCheck';
+import { placeRelics } from './relicGen';
 
 /** Each generation step draws from its own stream, so changing one step leaves the others. */
-const SALT = { surface: 1, caves: 2, barriers: 3, ores: 4 } as const;
+const SALT = { surface: 1, caves: 2, barriers: 3, ores: 4, lava: 5, gas: 6, relics: 7 } as const;
 
 interface Barrier {
   row: number;
@@ -27,7 +29,11 @@ interface Barrier {
 /**
  * Builds the world from a seed (GAME_SPEC §4): the same seed always gives the same world.
  * Zones of base material, a flat town plateau with rolling terrain beside it, caves, short
- * corestone barriers, ore by the mineral table, and a guaranteed way down to the bottom.
+ * corestone barriers, lava and gas, ore by the mineral table, a guaranteed way down to the
+ * bottom, and the ten relics where the pod can reach them.
+ *
+ * Saves store only the cells changed since generation, so any change here alters the worlds of
+ * existing saves: bump WORLD_VERSION with it.
  */
 export function generateWorld(seed: number): Grid {
   const grid = new Grid(WORLD.width, WORLD.height, WORLD.chunkSize, WORLD.skyRows);
@@ -35,10 +41,16 @@ export function generateWorld(seed: number): Grid {
   carveSurface(grid, new Rng(mixSeed(seed, SALT.surface)));
   carveCaves(grid, new Rng(mixSeed(seed, SALT.caves)));
   const barriers = placeBarriers(grid, new Rng(mixSeed(seed, SALT.barriers)));
+  placeLava(grid, new Rng(mixSeed(seed, SALT.lava)));
+  placeGas(grid, new Rng(mixSeed(seed, SALT.gas)));
   placeOres(grid, new Rng(mixSeed(seed, SALT.ores)));
   keepBottomReachable(grid, barriers);
+  placeRelics(grid, new Rng(mixSeed(seed, SALT.relics)));
   return grid;
 }
+
+/** Version of the generator's output; saves from another version cannot reuse their world. */
+export const WORLD_VERSION = 1;
 
 function fillZones(grid: Grid): void {
   for (let row = 0; row < grid.height; row++) {
@@ -134,18 +146,20 @@ function placeOres(grid: Grid, rng: Rng): void {
 
 /**
  * Anti-softlock (§4): while the bottom cannot be reached, the barrier stopping the deepest
- * progress turns back into plain rock. Without barriers every column can be drilled straight
- * down, so this always ends with a way to the bottom.
+ * progress turns back into plain rock, or lava there cools into rock. Without barriers and lava
+ * every column can be drilled straight down, so this always ends with a way to the bottom.
  */
 function keepBottomReachable(grid: Grid, barriers: Barrier[]): void {
   for (;;) {
     const path = findPathToBottom(grid);
     if (path.reachable) return;
-    const candidates = barriers
+    // Lava right at the deepest point is the cheaper fix: only a few cells change.
+    if (coolLava(grid, path.deepestRow) > 0) continue;
+    const below = barriers
       .filter((barrier) => barrier.row + barrier.rows > path.deepestRow)
-      .sort((a, b) => a.row - b.row);
-    const blocking = candidates[0] ?? barriers[barriers.length - 1];
-    if (!blocking) throw new Error('World has no way down and no barrier to remove');
+      .sort((a, b) => a.row - b.row)[0];
+    const blocking = below ?? barriers[barriers.length - 1];
+    if (!blocking) throw new Error('World has no way down and nothing left to clear');
     paintBarrier(grid, blocking, null);
     barriers.splice(barriers.indexOf(blocking), 1);
   }
