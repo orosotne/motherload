@@ -1,6 +1,8 @@
 import { GUI } from 'lil-gui';
 import type { GameLoop } from '../../core/loop';
 import type { CameraRig } from '../../render/camera';
+import type { SimSettings } from '../../sim/game';
+import { addFeelFolder } from './feelFolder';
 import { PerfMeter, type RenderInfo } from './perfMeter';
 
 /** What the debug tools can watch and tune. */
@@ -8,8 +10,10 @@ export interface DebugTargets {
   loop: GameLoop;
   camera: CameraRig;
   renderInfo: RenderInfo;
-  /** Tunables of the F0 test scene. */
-  demo: { speed: number };
+  /** Live simulation settings: game feel and pod physics. */
+  settings: SimSettings;
+  /** Puts the pod back on the surface. */
+  resetPod: () => void;
 }
 
 export interface DebugTools {
@@ -20,7 +24,7 @@ export interface DebugTools {
 const TOGGLE_KEYS = new Set(['Backquote', 'IntlBackslash']);
 
 /**
- * Debug panel (GAME_SPEC §9.9): lil-gui controls plus the performance meter. main.ts loads this
+ * Debug panel (GAME_SPEC §9.9): lil-gui controls plus the performance meter. app.ts loads this
  * module lazily, so a normal production build never downloads it.
  */
 export function createDebugTools(targets: DebugTargets): DebugTools {
@@ -48,7 +52,18 @@ export function createDebugTools(targets: DebugTargets): DebugTools {
   camera.add(settings, 'tiltDeg', 0, 60, 1).name('tilt (°)').onChange(apply);
   camera.add(settings, 'distance', 5, 60, 0.5).name('distance (blocks)').onChange(apply);
 
-  gui.addFolder('Test scene').add(targets.demo, 'speed', 0, 10, 0.1).name('spin (rad/s)');
+  addFeelFolder(gui, targets.settings.feel);
+
+  const pod = gui.addFolder('Pod');
+  const physics = targets.settings.pod;
+  pod.add({ reset: targets.resetPod }, 'reset').name('back to the surface');
+  pod.add(physics, 'driveSpeed', 1, 12, 0.25).name('drive speed');
+  pod.add(physics, 'groundAccel', 5, 80, 1).name('ground accel');
+  pod.add(physics, 'airAccel', 2, 60, 1).name('air accel');
+  pod.add(physics, 'gravity', 5, 40, 0.5);
+  pod.add(physics, 'maxFallSpeed', 4, 30, 0.5).name('max fall speed');
+  pod.add(physics, 'thrustAccel', 20, 90, 1).name('thrust accel');
+  pod.close();
 
   let shown = true;
   window.addEventListener('keydown', (event) => {
