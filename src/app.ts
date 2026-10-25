@@ -5,6 +5,7 @@ import { GameLoop } from './core/loop';
 import type { BuildingId } from './data/buildings';
 import { Block } from './data/blocks';
 import { mineralById } from './data/minerals';
+import { HEART } from './data/story';
 import { money } from './i18n';
 import { WORLD } from './data/world';
 import { GameView } from './render/view';
@@ -14,7 +15,12 @@ import { buildingAt } from './sim/buildings';
 import type { GameEvents } from './sim/events';
 import { defaultSettings, stepGame } from './sim/game';
 import { createPod } from './sim/pod';
+import { StoryDirector } from './story/director';
+import { abandonFinale, escapeSeconds } from './story/finale';
+import { albumView } from './ui/album';
 import type { DebugTools } from './ui/debug/debugPanel';
+import { endingView } from './ui/ending';
+import { EscapeTimer } from './ui/escapeTimer';
 import { Fade } from './ui/fade';
 import { HeatGlow } from './ui/heatGlow';
 import { Hud } from './ui/hud';
@@ -22,12 +28,16 @@ import { showNotices } from './ui/notices';
 import { PanelHost } from './ui/panel';
 import { pauseView } from './ui/pauseMenu';
 import { Popups } from './ui/popups';
+import { Radio } from './ui/radio';
+import { retryView } from './ui/retry';
 import { Rumble } from './ui/rumble';
 import { shopView } from './ui/shops';
 import { Toasts } from './ui/toasts';
 
 /** Seconds of play between autosaves. */
 const AUTOSAVE_SECONDS = 10;
+/** Seconds of celebration on the surface before the ending opens (§7). */
+const ENDING_DELAY_SECONDS = 2.5;
 
 /** Debug tools: always in dev mode; in a production build with ?debug, or #debug where the
  * query string never reaches the page (the claude.ai preview). */
@@ -74,14 +84,24 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     () => hud.cargoRect(),
   );
   showNotices(events, new Toasts(ui));
+  const radio = new Radio(ui, (speaker) => audio.story.radio(speaker));
+  events.on('Radio', ({ message }) => radio.say(message));
+  const escapeTimer = new EscapeTimer(ui, settings.pod.halfSize);
   let debug: DebugTools | null = null;
 
   // During a tow or a respawn the save holds its outcome, so a reload neither repeats nor
-  // skips it (§9.8).
+  // skips it (§9.8). The finale is never saved: a reload goes back to before the Heart was lit.
   let keepSaving = true;
   const save = (): void => {
-    if (!storage || !keepSaving) return;
+    if (!storage || !keepSaving || state.finale) return;
     writeSave(serialize(settled(state, settings.pod.halfSize), baseline), storage);
+  };
+  // A new world from a new seed (§7): this game must not come back, not even from leaving the
+  // page, which saves.
+  const startNewGame = (): void => {
+    keepSaving = false;
+    if (storage) clearSave(storage);
+    window.location.reload();
   };
   let sinceSave = 0;
   events.on('RelicFound', save);
@@ -95,12 +115,45 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     input.clearPresses();
     save();
   };
-  const openPause = (): void =>
-    panels.open(() => pauseView(audio.engine, () => panels.close()), afterPanel);
+  const openAlbum = (): void => {
+    const note = { text: '' };
+    panels.open(() => albumView(state, note), afterPanel);
+  };
+  const openPause = (): void => {
+    const confirm = { armed: false };
+    const actions = { resume: () => panels.close(), album: openAlbum, newGame: startNewGame };
+    panels.open(() => pauseView(audio.engine, actions, confirm), afterPanel);
+  };
   const openShop = (id: BuildingId): void => {
     const note = { text: '' };
-    panels.open(() => shopView(id, { state, events, note }), afterPanel);
+    panels.open(() => shopView(id, { state, events, note, openAlbum }), afterPanel);
   };
+  const openEnding = (): void => {
+    const confirm = { armed: false };
+    const actions = { keepMining: () => panels.close(), newGame: startNewGame };
+    panels.open(() => endingView(state, actions, confirm), afterPanel);
+  };
+  // After the lava wins: another try, or a free tow home (pillar 4).
+  events.on('EscapeFailed', ({ attempts }) => {
+    const next = { attempt: attempts + 1, seconds: escapeSeconds(attempts + 1) };
+    const actions = {
+      again: () => panels.close(),
+      giveUp: () => {
+        abandonFinale(state, settings.pod.halfSize, events);
+        panels.close();
+      },
+    };
+    panels.open(() => retryView(next, actions), afterPanel);
+  });
+  // The ending, after a moment of fireworks; finding the last relic later shows the epilogue.
+  let endingIn = Infinity;
+  events.on('FinaleWon', () => {
+    save();
+    endingIn = ENDING_DELAY_SECONDS;
+  });
+  events.on('RelicFound', () => {
+    if (state.story.finished && state.relics.every(Boolean)) endingIn = ENDING_DELAY_SECONDS;
+  });
 
   // A valuable mineral (§5.5) holds the game still for a moment; every one flies to the HUD (§5.6).
   events.on('MineralCollected', ({ mineral, value, col, row }) => {
@@ -122,6 +175,13 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         openPause();
         return;
       }
+      if (frame.pressed.skip) radio.skip();
+      endingIn -= dt;
+      if (endingIn <= 0) {
+        endingIn = Infinity;
+        openEnding();
+        return;
+      }
       const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
       if (frame.pressed.enter && building) {
         openShop(building.id);
@@ -140,11 +200,16 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
       audio.update(panels.isOpen);
       rumble.update(state, frameSeconds, panels.isOpen);
       hud.update(state);
+      escapeTimer.update(state);
+      radio.update(frameSeconds, panels.isOpen);
       heatGlow.update(state);
       fade.update(state, frameSeconds);
       debug?.perf.frame(frameSeconds, loop.lastUpdateMs + performance.now() - renderStart);
     },
   });
+  // The director speaks through the radio from the first message on (§7).
+  const director = new StoryDirector(state, events);
+  director.start();
   loop.start();
 
   if (!debugRequested()) return;
@@ -164,16 +229,13 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
           view.snapCamera();
         },
         teleport: (row) => {
-          state.grid.set(WORLD.spawnCol, row, Block.Empty);
-          state.pod = createPod(WORLD.spawnCol, row, settings.pod.halfSize);
+          // Never into the Heart: in its chamber the pod lands right beside it.
+          const col = row >= HEART.chamber.firstRow ? HEART.cols[0] - 1 : WORLD.spawnCol;
+          state.grid.set(col, row, Block.Empty);
+          state.pod = createPod(col, row, settings.pod.halfSize);
           view.snapCamera();
         },
-        newGame: () => {
-          // Leaving the page saves; this game must not come back.
-          keepSaving = false;
-          if (storage) clearSave(storage);
-          window.location.reload();
-        },
+        newGame: startNewGame,
       });
     })
     .catch((error: unknown) => console.error('Debug tools failed to load', error));

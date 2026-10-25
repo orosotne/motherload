@@ -73,6 +73,7 @@ export function showNotices(events: EventBus<GameEvents>, toasts: Toasts): void 
       'good',
     ),
   );
+  events.on('FinaleWon', () => toasts.show(t('toast.finale'), 'good', 3000));
   events.on('Teleported', ({ cause }) =>
     toasts.show(t(cause === 'beacon' ? 'toast.beacon' : 'toast.anchorRide'), 'good'),
   );

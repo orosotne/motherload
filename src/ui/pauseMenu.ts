@@ -15,11 +15,24 @@ function percent(value: number): string {
   return `${Math.round(value * 100)} %`;
 }
 
+export interface PauseActions {
+  resume: () => void;
+  /** The Album of relics (§7). */
+  album: () => void;
+  /** A new world with a new seed; asks twice, since this game is wiped. */
+  newGame: () => void;
+}
+
 /**
- * The pause menu (Esc or Start, §5): continue, the volume mixer (§8), the language and a reminder
- * of the controls. It is a panel, so the keyboard and the gamepad work in it the same way.
+ * The pause menu (Esc or Start, §5): continue, the Album, the volume mixer (§8), the language,
+ * a new game and a reminder of the controls. It is a panel, so the keyboard and the gamepad
+ * work in it the same way.
  */
-export function pauseView(audio: AudioEngine, resume: () => void): PanelView {
+export function pauseView(
+  audio: AudioEngine,
+  actions: PauseActions,
+  confirm: { armed: boolean },
+): PanelView {
   const volume = (channel: keyof AudioVolumes, key: TextKey): PanelAction => ({
     label: t(key),
     detail: percent(audio.volumes[channel]),
@@ -38,8 +51,10 @@ export function pauseView(audio: AudioEngine, resume: () => void): PanelView {
     line: t('pause.line'),
     body: help,
     noClose: true,
+    note: confirm.armed ? t('newGame.confirm') : '',
     actions: [
-      { label: t('pause.continue'), run: resume },
+      { label: t('pause.continue'), run: actions.resume },
+      { label: t('pause.album'), run: actions.album },
       volume('master', 'pause.master'),
       volume('music', 'pause.music'),
       volume('sfx', 'pause.sfx'),
@@ -47,6 +62,14 @@ export function pauseView(audio: AudioEngine, resume: () => void): PanelView {
         label: t('pause.language'),
         detail: t('pause.languageName'),
         run: () => setLanguage(getLanguage() === 'en' ? 'sk' : 'en'),
+      },
+      {
+        label: t('newGame.label'),
+        sub: t('newGame.sub'),
+        run: () => {
+          if (confirm.armed) actions.newGame();
+          confirm.armed = true;
+        },
       },
     ],
   };

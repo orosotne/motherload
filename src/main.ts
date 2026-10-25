@@ -1,6 +1,7 @@
 import './ui/styles.css';
 import './ui/hud.css';
 import './ui/panel.css';
+import './ui/story.css';
 import { startApp } from './app';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game');

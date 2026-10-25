@@ -1,9 +1,11 @@
 import { FUEL } from '../data/economy';
 import { HEAT } from '../data/hazards';
+import { RELICS } from '../data/relics';
 import { decimal, money, onLanguageChange, t, type TextKey } from '../i18n';
 import { buildingAt, depthMeters } from '../sim/buildings';
 import { cargoUnits } from '../sim/cargo';
 import type { GameState } from '../sim/game';
+import { nearHeart, relicCount } from '../story/finale';
 import { slotRow } from './supply';
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -54,6 +56,7 @@ export class Hud {
   private readonly slots: HTMLElement;
   private slotsShown = '';
   private readonly prompt: HTMLElement;
+  private readonly promptKey: HTMLElement;
   private readonly promptText: HTMLElement;
   private readonly shown = new Map<HTMLElement, string>();
 
@@ -72,8 +75,8 @@ export class Hud {
     this.slots = element('div', 'hud-slots', root);
 
     this.prompt = element('div', 'prompt', parent);
-    const key = element('kbd', '', this.prompt);
-    key.textContent = 'E';
+    this.promptKey = element('kbd', '', this.prompt);
+    this.promptKey.textContent = 'E';
     this.promptText = element('span', '', this.prompt);
     this.prompt.hidden = true;
 
@@ -112,9 +115,26 @@ export class Hud {
     this.updateHeat(state);
     this.updateSlots(state);
 
+    this.updatePrompt(state);
+  }
+
+  /** "E" and a building's name, or by the Heart what it needs to burn again (§7). */
+  private updatePrompt(state: GameState): void {
     const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
-    this.prompt.hidden = !building;
-    if (building) this.write(this.promptText, t(building.key as TextKey));
+    const heart = !building && nearHeart(state);
+    this.prompt.hidden = !building && !heart;
+    if (building) {
+      this.promptKey.hidden = false;
+      this.write(this.promptText, t(building.key as TextKey));
+    } else if (heart) {
+      const count = relicCount(state);
+      const ready = count >= RELICS.neededForFinale;
+      this.promptKey.hidden = !ready;
+      this.write(
+        this.promptText,
+        ready ? t('heart.ignite') : t('heart.needs', { count, needed: RELICS.neededForFinale }),
+      );
+    }
   }
 
   /** Where the cargo readout sits on screen: mineral popups fly there (§5.6). */

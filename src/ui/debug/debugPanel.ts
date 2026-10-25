@@ -1,5 +1,6 @@
 import { GUI } from 'lil-gui';
 import type { GameLoop } from '../../core/loop';
+import { HEART } from '../../data/story';
 import { UPGRADE_BRANCHES } from '../../data/upgrades';
 import { WORLD } from '../../data/world';
 import type { CameraRig } from '../../render/camera';
@@ -23,7 +24,8 @@ export interface DebugTargets {
   view: GameView;
   /** Puts the pod back on the surface. */
   resetPod: () => void;
-  /** Puts the pod into a row, clearing that cell (§9.9: teleport to a depth). */
+  /** Puts the pod into a row, clearing that cell (§9.9: teleport to a depth); beside the Heart
+   * in its chamber. */
   teleport: (row: number) => void;
   /** Throws the save away and starts a new world. */
   newGame: () => void;
@@ -90,6 +92,13 @@ export function createDebugTools(targets: DebugTargets): DebugTools {
   game.add({ fresh: targets.newGame }, 'fresh').name('new game (deletes the save)');
   game.add(targets.view, 'chunkBorders').name('chunk borders');
   game.close();
+
+  const story = gui.addFolder('Story');
+  story.add({ relics: () => state.relics.fill(true) }, 'relics').name('all 10 relics');
+  story
+    .add({ heart: () => targets.teleport(HEART.rows[1]) }, 'heart')
+    .name('teleport to the Heart');
+  story.close();
 
   const pod = gui.addFolder('Pod');
   const physics = targets.settings.pod;
