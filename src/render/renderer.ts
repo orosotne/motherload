@@ -1,4 +1,4 @@
-import { WebGLRenderer } from 'three';
+import { PCFShadowMap, WebGLRenderer } from 'three';
 import { RENDER } from '../data/render';
 
 /** Creates the WebGL2 renderer on the game canvas. */
@@ -11,6 +11,9 @@ export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
   // Counters cover a whole frame, also once a frame needs several render passes (bloom, §8).
   // The frame callback resets them.
   renderer.info.autoReset = false;
+  // The sun's shadows on the surface (§8: at most two shadowed lights; it is the only one).
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = PCFShadowMap;
   return renderer;
 }
 

@@ -5,11 +5,11 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   PlaneGeometry,
   SRGBColorSpace,
 } from 'three';
 import { BUILDINGS, type BuildingConfig, type BuildingId } from '../data/buildings';
+import { toon } from './toon';
 
 /** Buildings stand behind the play plane, so the pod drives in front of them. */
 const DEPTH = -1.4;
@@ -87,24 +87,18 @@ function createBuilding(config: BuildingConfig): Group {
   const width = config.lastCol - config.firstCol + 0.6;
   const center = (config.firstCol + config.lastCol) / 2;
 
-  const body = new Mesh(
-    new BoxGeometry(width, HEIGHT, 1.6),
-    new MeshStandardMaterial({ color: config.color, roughness: 0.8 }),
-  );
+  const body = new Mesh(new BoxGeometry(width, HEIGHT, 1.6), toon({ color: config.color }));
   body.position.set(0, HEIGHT / 2, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
 
-  const roof = new Mesh(
-    new ConeGeometry(width * 0.78, 1.1, 4, 1),
-    new MeshStandardMaterial({ color: '#4A3B52', roughness: 0.7 }),
-  );
+  const roof = new Mesh(new ConeGeometry(width * 0.78, 1.1, 4, 1), toon({ color: '#4A3B52' }));
+  roof.castShadow = true;
   roof.rotation.y = Math.PI / 4;
   roof.scale.set(1, 1, 0.6);
   roof.position.set(0, HEIGHT + 0.55, 0);
 
-  const door = new Mesh(
-    new PlaneGeometry(0.7, 1.05),
-    new MeshStandardMaterial({ color: '#3A2E2A', roughness: 1 }),
-  );
+  const door = new Mesh(new PlaneGeometry(0.7, 1.05), toon({ color: '#3A2E2A' }));
   door.position.set(0, 0.53, 0.81);
 
   const sign = new Mesh(

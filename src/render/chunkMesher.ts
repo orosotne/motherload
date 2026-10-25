@@ -1,25 +1,28 @@
 import {
-  BoxGeometry,
   Color,
+  Euler,
   Group,
   InstancedMesh,
   Matrix4,
-  Euler,
   Quaternion,
   Vector3,
+  type BufferGeometry,
+  type Material,
 } from 'three';
-import type { BufferGeometry, Material } from 'three';
 import type { BlockId } from '../data/blocks';
 import type { Grid } from '../world/grid';
+import { BLOOM_LAYER } from './toon';
 
-/** How one cell is drawn: a cube in `material`, tinted `color`; null draws nothing. */
+/** How one cell is drawn: `geometry` in `material`, tinted `color`; null draws nothing. */
 export interface BlockLook {
   material: Material;
   color: Color;
+  geometry: BufferGeometry;
+  /** Casts and receives the sun's shadows. */
+  shadows: boolean;
+  /** Feeds the bloom (§8). */
+  glow?: boolean;
 }
-
-/** Decides the look of a cell; `row` matters because colours follow the zone (§8). */
-export type BlockLooks = (block: BlockId, row: number) => BlockLook | null;
 
 /**
  * Something sitting in a block's front face: a mineral crystal (§6: own shape and colour), the
@@ -31,9 +34,10 @@ export interface DecorLook {
   material: Material;
   /** Turned at random per cell, like crystals; otherwise facing the camera. */
   turn: boolean;
+  glow: boolean;
+  /** Inverted-hull outline drawn with the same instances (§8). */
+  outline?: Material;
 }
-
-export type DecorLooks = (block: BlockId, mineral: number) => DecorLook | null;
 
 /** Chunks within this many chunk rows of the camera are drawn (GAME_SPEC §9.7). */
 const VISIBLE_CHUNK_ROWS = 2;
@@ -51,7 +55,8 @@ export function cellHash(col: number, row: number, salt = 0): number {
 class ChunkView {
   /** Grid version this view was built from; −1 means never built. */
   version = -1;
-  readonly meshes = new Map<Material | number, InstancedMesh>();
+  readonly meshes = new Map<string, InstancedMesh>();
+  readonly outlines = new Map<string, InstancedMesh>();
 
   constructor(
     readonly chunkCol: number,
@@ -60,25 +65,25 @@ class ChunkView {
 }
 
 /**
- * Draws the grid chunk by chunk (GAME_SPEC §4, §9.6): per chunk one InstancedMesh per material
- * and one per decoration (crystals, bubbles, emblems), rebuilt only when that chunk changed; only chunks near the camera
- * are shown.
+ * Draws the grid chunk by chunk (GAME_SPEC §4, §9.6): per chunk one InstancedMesh per look,
+ * rebuilt only when that chunk changed. Chunks near the camera are shown and culled by their
+ * bounds, so the draw calls stay within budget (§9).
  */
 export class ChunkRenderer {
   readonly group = new Group();
   private readonly chunks: ChunkView[] = [];
-  private readonly cube = new BoxGeometry(1, 1, 1);
   private readonly matrix = new Matrix4();
   private readonly shade = new Color();
   private readonly position = new Vector3();
   private readonly rotation = new Quaternion();
   private readonly euler = new Euler();
   private readonly scale = new Vector3(1, 1, 1);
+  private readonly ids = new Map<object, number>();
 
   constructor(
     private readonly grid: Grid,
-    private readonly looks: BlockLooks,
-    private readonly decor: DecorLooks,
+    private readonly looks: (block: BlockId, row: number) => BlockLook | null,
+    private readonly decor: (block: BlockId, mineral: number) => DecorLook | null,
   ) {
     // Same order as Grid.chunkIndex: rows outside, columns inside.
     for (let row = 0; row < grid.chunkRows; row++) {
@@ -86,12 +91,18 @@ export class ChunkRenderer {
     }
   }
 
+  /** Forces every chunk to be rebuilt, e.g. after a look was switched in the debug panel. */
+  invalidate(): void {
+    for (const chunk of this.chunks) chunk.version = -1;
+  }
+
   /** Shows the chunks around `focusRow` and rebuilds the ones that changed since last drawn. */
   update(focusRow: number): void {
     const focusChunkRow = Math.floor(focusRow / this.grid.chunkSize);
     this.chunks.forEach((chunk, index) => {
       const visible = Math.abs(chunk.chunkRow - focusChunkRow) <= VISIBLE_CHUNK_ROWS;
-      for (const mesh of chunk.meshes.values()) mesh.visible = visible;
+      for (const mesh of chunk.meshes.values()) mesh.visible = visible && mesh.count > 0;
+      for (const mesh of chunk.outlines.values()) mesh.visible = visible && mesh.count > 0;
       if (!visible) return;
       const version = this.grid.chunkVersion(index);
       if (version === chunk.version) return;
@@ -114,14 +125,37 @@ export class ChunkRenderer {
         if (decor) this.addDecor(chunk, decor, col, row);
       }
     }
-    for (const mesh of chunk.meshes.values()) {
+    for (const [key, mesh] of chunk.meshes) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.visible = mesh.count > 0;
+      if (mesh.count > 0) mesh.computeBoundingSphere();
+      const outline = chunk.outlines.get(key);
+      if (outline) {
+        outline.count = mesh.count;
+        outline.visible = mesh.visible;
+        outline.boundingSphere = mesh.boundingSphere;
+      }
     }
   }
 
+  /** A stable short id per material or geometry, for mesh keys. */
+  private id(thing: object): number {
+    let id = this.ids.get(thing);
+    if (id === undefined) {
+      id = this.ids.size;
+      this.ids.set(thing, id);
+    }
+    return id;
+  }
+
   private addCube(chunk: ChunkView, look: BlockLook, col: number, row: number): void {
-    const mesh = this.meshFor(chunk, look.material, this.cube, look.material);
+    const key = `b${this.id(look.material)}-${this.id(look.geometry)}`;
+    const mesh = this.meshFor(chunk, key, look.geometry, look.material, look.glow ?? false);
+    if (mesh.count === 0) {
+      mesh.castShadow = look.shadows;
+      mesh.receiveShadow = look.shadows;
+    }
     const index = mesh.count++;
     mesh.setMatrixAt(index, this.matrix.makeTranslation(col, -row, 0));
     const shade = 1 + (cellHash(col, row) * 2 - 1) * SHADE_VARIATION;
@@ -129,7 +163,16 @@ export class ChunkRenderer {
   }
 
   private addDecor(chunk: ChunkView, decor: DecorLook, col: number, row: number): void {
-    const mesh = this.meshFor(chunk, decor.key, decor.geometry, decor.material);
+    const key = `d${decor.key}`;
+    const mesh = this.meshFor(chunk, key, decor.geometry, decor.material, decor.glow);
+    if (decor.outline && !chunk.outlines.has(key)) {
+      // The outline shares the crystal's instance matrices: no second copy to keep in sync.
+      const outline = new InstancedMesh(decor.geometry, decor.outline, mesh.instanceMatrix.count);
+      outline.instanceMatrix = mesh.instanceMatrix;
+      outline.frustumCulled = true;
+      chunk.outlines.set(key, outline);
+      this.group.add(outline);
+    }
     const index = mesh.count++;
     if (decor.turn) {
       const turn = cellHash(col, row, 7) * Math.PI * 2;
@@ -137,7 +180,7 @@ export class ChunkRenderer {
     } else {
       this.euler.set(0, 0, 0);
     }
-    // Half sunk into the block's front face, so it reads as embedded ore.
+    // Half sunk into the block's front face, so it reads as embedded.
     this.position.set(col, -row, 0.5);
     this.matrix.compose(this.position, this.rotation.setFromEuler(this.euler), this.scale);
     mesh.setMatrixAt(index, this.matrix);
@@ -145,16 +188,18 @@ export class ChunkRenderer {
 
   private meshFor(
     chunk: ChunkView,
-    key: Material | number,
+    key: string,
     geometry: BufferGeometry,
     material: Material,
+    glow: boolean,
   ): InstancedMesh {
     let mesh = chunk.meshes.get(key);
     if (!mesh) {
       mesh = new InstancedMesh(geometry, material, this.grid.chunkSize * this.grid.chunkSize);
       mesh.count = 0;
-      // Chunk visibility is managed above; per-mesh culling would need bounds per rebuild.
-      mesh.frustumCulled = false;
+      // Bounds come from the instances after each rebuild (computeBoundingSphere).
+      mesh.frustumCulled = true;
+      if (glow) mesh.layers.enable(BLOOM_LAYER);
       chunk.meshes.set(key, mesh);
       this.group.add(mesh);
     }
