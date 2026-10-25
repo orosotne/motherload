@@ -42,7 +42,7 @@ describe('the finale (§7)', () => {
     expect([sim.pod.x, rowOf(sim.pod.y)]).toEqual([ESCAPE_COL, HEART.rows[1]]);
   });
 
-  it('lets the lava rise after a grace period, reaching the surface when time is up', () => {
+  it('lets the lava rise after a grace period, slowly at first, to the surface on time', () => {
     const sim = startEscape(byTheHeart(6));
     const { state } = sim;
     const bus = new EventBus<GameEvents>();
@@ -58,10 +58,14 @@ describe('the finale (§7)', () => {
     run(FINALE.graceSeconds);
     expect(state.finale?.lavaRow).toBeCloseTo(FINALE.lavaStartRow, 5);
     run((90 - FINALE.graceSeconds) / 2);
-    expect(state.finale?.lavaRow).toBeCloseTo(FINALE.lavaStartRow / 2, 0);
+    const midway = FINALE.lavaStartRow * (1 - 0.5 ** FINALE.lavaEase);
+    expect(state.finale?.lavaRow).toBeCloseTo(midway, 0);
+    expect(midway).toBeGreaterThan(FINALE.lavaStartRow / 2);
     run((90 - FINALE.graceSeconds) / 2 - 1);
     expect(state.finale?.left).toBeCloseTo(1, 5);
-    expect(state.finale?.lavaRow).toBeLessThan(7);
+    // A second before the end it is racing the last rows up.
+    expect(state.finale?.lavaRow).toBeLessThan(10);
+    expect(state.finale?.lavaRow).toBeGreaterThan(0);
   });
 
   it('starts over by the Heart with more time when the lava catches the pod', () => {
