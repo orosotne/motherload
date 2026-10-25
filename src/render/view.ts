@@ -1,0 +1,122 @@
+import { MathUtils, type Scene, type WebGLRenderer } from 'three';
+import type { EventBus } from '../core/events';
+import { ENGINE } from '../data/engine';
+import type { GameEvents } from '../sim/events';
+import type { GameState, SimSettings } from '../sim/game';
+import { rowOf } from '../sim/pod';
+import { createBackdrop } from './backdrop';
+import { CameraRig } from './camera';
+import { clampView, followTarget, smoothToward } from './cameraMath';
+import { ChunkRenderer } from './chunkMesher';
+import { landingTrauma, Shake } from './effects/shake';
+import { createGreyMaterials } from './materials';
+import { PodView } from './podView';
+import { bindResize, createRenderer } from './renderer';
+import { createScene } from './scene';
+
+/** Blocks of rock and sky the camera may show beyond the world's edges. */
+const EDGE_MARGIN = 1;
+const SKY_MARGIN = 3;
+
+/**
+ * Everything the player sees of the world: grid, pod and camera. It only reads the simulation
+ * state and reacts to its events (GAME_SPEC §9.5).
+ */
+export class GameView {
+  readonly renderer: WebGLRenderer;
+  readonly rig = new CameraRig();
+  private readonly scene: Scene;
+  private readonly chunks: ChunkRenderer;
+  private readonly pod: PodView;
+  private readonly shake = new Shake();
+  private cameraX: number;
+  private cameraY: number;
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    private readonly state: GameState,
+    private readonly settings: SimSettings,
+    events: EventBus<GameEvents>,
+  ) {
+    this.renderer = createRenderer(canvas);
+    this.scene = createScene();
+    bindResize(this.renderer, (width, height) => this.rig.setAspect(width / height));
+
+    this.chunks = new ChunkRenderer(state.grid, createGreyMaterials());
+    this.pod = new PodView(settings.pod.halfSize);
+    this.scene.add(this.chunks.group, createBackdrop(state.grid), this.pod.root);
+    this.cameraX = state.pod.x;
+    this.cameraY = state.pod.y;
+
+    events.on('Landed', ({ speed }) => this.onLanded(speed));
+    events.on('EngineStarted', () => {
+      const { squash } = this.settings.feel;
+      this.pod.startPulse(squash.liftScaleX, squash.liftScaleY, squash.liftMs);
+    });
+  }
+
+  /** Jumps the camera to the pod, e.g. after a teleport. */
+  snapCamera(): void {
+    this.cameraX = this.state.pod.x;
+    this.cameraY = this.state.pod.y;
+  }
+
+  render(alpha: number, frameSeconds: number): void {
+    this.renderer.info.reset();
+    this.pod.update(this.state.pod, alpha, frameSeconds, this.settings.feel.squash.enabled);
+    this.updateCamera(alpha, frameSeconds);
+    this.chunks.update(rowOf(this.cameraY));
+    this.renderer.render(this.scene, this.rig.camera);
+  }
+
+  private onLanded(speed: number): void {
+    const { squash, shake } = this.settings.feel;
+    if (speed >= squash.minLandingSpeed) {
+      this.pod.startPulse(squash.landScaleX, squash.landScaleY, squash.landMs);
+    }
+    const top = this.settings.pod.maxFallSpeed;
+    this.shake.add(landingTrauma(speed, shake.landingMinSpeed, top, shake.landingMaxTrauma));
+  }
+
+  /** Smooth follow with lookahead (§5.8), kept inside the world, plus screen shake (§5.7). */
+  private updateCamera(alpha: number, dt: number): void {
+    const { pod, grid, stats } = this.state;
+    const { camera, shake } = this.settings.feel;
+    const x = pod.prevX + (pod.x - pod.prevX) * alpha;
+    const y = pod.prevY + (pod.y - pod.prevY) * alpha;
+    if (camera.enabled) {
+      // Velocity from the last tick's displacement also covers gliding while drilling.
+      const velocity = {
+        x: (pod.x - pod.prevX) * ENGINE.simHz,
+        y: (pod.y - pod.prevY) * ENGINE.simHz,
+      };
+      const speeds = {
+        drive: this.settings.pod.driveSpeed,
+        fall: this.settings.pod.maxFallSpeed,
+        climb: stats.climbSpeed,
+      };
+      const target = followTarget({ x, y }, velocity, camera, speeds);
+      this.cameraX = smoothToward(this.cameraX, target.x, camera.followRate, dt);
+      this.cameraY = smoothToward(this.cameraY, target.y, camera.followRate, dt);
+    } else {
+      this.cameraX = x;
+      this.cameraY = y;
+    }
+
+    const half = this.rig.halfView();
+    const viewX = clampView(
+      this.cameraX,
+      half.width,
+      -0.5 - EDGE_MARGIN,
+      grid.width - 0.5 + EDGE_MARGIN,
+    );
+    const skyTop = 0.5 + grid.skyRows + SKY_MARGIN;
+    const viewY = clampView(this.cameraY, half.height, -grid.height + 0.5 - EDGE_MARGIN, skyTop);
+
+    this.shake.update(dt, shake.decayPerSecond);
+    const offset = shake.enabled
+      ? this.shake.offset(shake.maxOffset, MathUtils.degToRad(shake.maxRollDeg), shake.frequency)
+      : { x: 0, y: 0, roll: 0 };
+    this.rig.setFocus(viewX + offset.x, viewY + offset.y, offset.roll);
+  }
+}

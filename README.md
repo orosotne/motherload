@@ -15,6 +15,16 @@ npm run dev
 
 Potom otvor http://localhost:5173 v Chrome alebo Safari.
 
+## Ovládanie
+
+| Klávesy              | Akcia                    |
+| -------------------- | ------------------------ |
+| A / D alebo ← / →    | jazda a vŕtanie do strán |
+| S alebo ↓            | vŕtanie dole             |
+| W, ↑ alebo medzerník | let                      |
+
+Nahor ani vo vzduchu sa vŕtať nedá. Ovládač (gamepad) príde vo fáze F4.
+
 ## Príkazy
 
 | Príkaz            | Čo robí                                         |
