@@ -164,6 +164,14 @@ class TrackPlayer {
   schedule(until: number): void {
     const { track } = this;
     const eighth = 60 / track.bpm / 2;
+    // After a gap (a hidden tab gets no frames while the sound clock runs on) the missed notes
+    // are skipped, not played all at once.
+    const now = this.context.currentTime;
+    if (this.next < now) {
+      const missed = Math.ceil((now - this.next) / eighth);
+      this.next += missed * eighth;
+      this.step += missed;
+    }
     while (this.next < until) {
       const bar = Math.floor(this.step / 8) % track.chords.length;
       const inBar = this.step % 8;
