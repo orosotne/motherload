@@ -102,3 +102,49 @@ Malé rozhodnutia, ktoré GAME_SPEC.md nechala otvorené (§11.7). Väčšie zme
 ### Ladenie
 
 - **Odpor vo vzduchu 10 namiesto 4:** pri 4 modul po pustení smeru doletel ešte 2,5 bloku, s 10 zastaví do jedného bloku.
+
+## F3 Progresia (2026-10-25)
+
+### Upgrady a Zásobáreň
+
+- **Nový trup príde opravený a nová nádrž plná.** Kúpa je odmena, nie ďalší účet.
+- **Jeden predmet na slot**, najviac päť. F použije vybraný slot. Keď je vybraný slot prázdny, použije sa prvý plný, aby hráč, ktorý nikdy nestlačí 1 až 5, nič nestratil.
+- **Palivový článok a opravná súprava sa v núdzi použijú samy:** článok pri prázdnej nádrži (inak by hneď letel dron), súprava pri 0 HP (pilier 4: predmet kúpený na núdzu má v núdzi pomôcť).
+- **Nálože modulu neublížia** a pod zemou zničia všetko vŕtateľné okrem relikvií. Jadrovec a láva zostanú (§4). Plynové kapsy v dosahu vyhoria bez reťazovej explózie. Na povrchu nefungujú.
+- **Návratový maják** pristane pred Mirin Výkup, aby sa dalo hneď predávať.
+- **Výťahová kotva** sa položí použitím pod zemou a zostane v slote. Ďalším použitím pod zemou sa presunie. Z povrchu odvezie modul ku kotve a minie sa.
+
+### Hazardy
+
+- **Plyn:** výbuch 3 × 3 zničí bloky rovnako ako nálož a minerály v ňom prepadnú. Poškodenie je 15 HP v pásme 2 a o 5 HP viac za každé hlbšie pásmo. V prvom pásme plyn nie je. Hustota je 1,2 / 1,5 / 1,8 / 2 % blokov v pásmach 2 až 5.
+- **Pustiť smer znamená prerušiť:** vŕtanie plynu, ktoré hráč do 0,3 s nedrží, sa zastaví a modul sa vráti. Ťuknutím sa teda plynom prejsť nedá, treba sa rozhodnúť a podržať. Prerušené stlačenie sa nezopakuje cez input buffer.
+- **Prvok 11 (odpúšťanie) sa dá vypnúť** v debug paneli: potom bolí každý blok pádu a plyn sa prerušiť nedá.
+- **Láva je tekutá:** modul do nej vojde a klesá v nej najviac 2,5 bloku za sekundu. Láva zastaví meranie pádu, takže po dopade do nej neberie pád. Kým sa jej modul dotýka, stráca 10 HP za sekundu.
+- **Kde je láva:** jazierka na dne jaskýň (30 % a 40 % úsekov dna v pásmach 4 a 5) a malé kapsy v skale. Posledné 4 riadky sveta sú bez lávy kvôli finále. Ak láva zatarasí cestu na dno, anti-softlock ju premení na skalu.
+- **Teplo:** ukazovateľ sa plní rýchlosťou 8 % za sekundu plus 0,04 % za každý meter pod limitom a chladne 25 % za sekundu. Pri 100 % trup stráca 2 HP za sekundu. Ukazovateľ v HUD sa objaví od pásma 4 a okraje obrazovky pri prehrievaní sčervenajú.
+- **Poškodenie lávou a teplom sa ráta v celých HP.** Namiesto „−1 HP“ každú chvíľu sa ukáže jedno varovanie.
+- **Tma a zemetrasenia** sú vizuálne a príbehové prvky, prídu v F4 a F5.
+
+### Relikvie
+
+- **Relikvia leží v pevnej, dosiahnuteľnej hornine,** aspoň 2 stĺpce od okraja sveta. Výbuch ju nezničí.
+- **Názvy relikvií** sú v hre už teraz (Žeravá minca … Iskra Srdca). Texty do Albumu a komentáre Miry prídu v F5.
+
+### Ukladanie
+
+- **localStorage pod kľúčom `hlbina.save`, `schemaVersion` 1.** Svet je seed a zoznam zmenených buniek, každá ako tri čísla.
+- **Ukladá sa každých 10 s hry,** po odchode z obchodu, pri nájdení relikvie a pri skrytí alebo zatvorení stránky. Nikdy počas odťahu alebo respawnu, takže reload nezopakuje ani nepreskočí poplatok.
+- **Modul uložený počas vŕtania** sa načíta tam, kde vŕtanie začalo, nikdy napoly v bloku.
+- **Poškodený save sa opraví,** nezahodí: zlé hodnoty sa nahradia predvolenými a zlé bunky sa vynechajú. Neznáma verzia formátu začne novú hru.
+- **Zmena generátora (`WORLD_VERSION`)** zachová peniaze, upgrady aj relikvie, ale svet sa vygeneruje nanovo a modul začne na povrchu.
+- **Debug panel** pridal peniaze, všetky upgrady, teleport do hĺbky a novú hru, ktorá zmaže uloženú (§9.9).
+
+### Ekonomika (`npm run sim:economy`)
+
+- **Model hráča:** výlet do pásma, ťaženie, kým sa nenaplní náklad alebo nepríde rezerva paliva, a návrat. Viditeľnú rudu hráč trafí 2,5-krát častejšie než náhodné vŕtanie. V tme len v dosahu svetlometu, na 10 blokov naplno. Každý výlet ide najviac 20 riadkov hlbšie ako doteraz, lebo hráč objavuje postupne. Ide hlbšie, keď tam zarobí aspoň 60 % najlepšieho výletu. Kupuje to, čo najviac zvýši príjem alebo dosah na dolár. Všetky predpoklady sú v `src/data/balance.ts`.
+- **Hodnoty zo špecifikácie ciele nespĺňali.** Model s nimi došiel do finále za 28 minút: príjem hlboko rástol 6- až 8-násobne za pásmo, ceny len 2,5-násobne.
+- **Nové hodnoty minerálov:** Rustite $25, Cobaltine $50, Glimmerite $90, Aurelite $200, Skyquartz $350, Emberstone $600, Voidglass $1 200, Starheart $2 500, Core Pearl $5 000. Poradie minerálov zostalo, hlboké sú výrazne lacnejšie.
+- **Nové ceny tierov:** T2 $500, T3 $3 000, T4 $20 000, T5 $65 000, T6 $200 000.
+- **Výsledok modelu:** prvý upgrade po 2 výletoch (3,8 min), pásmo 2 za 6,5 min, pásmo 3 za 24 min, pásmo 4 za 60 min, finále za 186 min, medzi nákupmi najviac 3 výlety. Test `tests/balance.test.ts` stráži, že ciele platia.
+- **Finále v modeli** vyžaduje 6 relikvií, motor T4 (útek 90 s) a ponor ku dnu, pri ktorom teplo a plyn zoberú najviac 60 % trupu.
+- **Prah pre hitstop a záblesk (§5.5)** bol $900, teda päť najcennejších minerálov. S novými hodnotami bude v F4 $350, aby sa týkal tých istých piatich.
