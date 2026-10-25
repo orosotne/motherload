@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { Block } from '../src/data/blocks';
 import { RECOVERY } from '../src/data/economy';
+import { buildingAt } from '../src/sim/buildings';
 import { cargoUnits } from '../src/sim/cargo';
 import { colOf, createPod, rowOf } from '../src/sim/pod';
 import { gridFrom, Sim } from './helpers/sim';
@@ -58,6 +60,27 @@ describe('fuel (§3)', () => {
     expect(cargoUnits(sim.state.cargo)).toBe(3);
     expect([colOf(sim.pod.x), rowOf(sim.pod.y)]).toEqual([15, -1]);
     expect(sim.state.status.kind).toBe('play');
+  });
+
+  it('lands the towed pod where it can stand, even if the station ground was dug away', () => {
+    const dug = (cols: number[]): Sim => {
+      const sim = new Sim(gridFrom([GROUND, GROUND, GROUND]), 3, 1);
+      for (const col of cols) sim.state.grid.set(col, 0, Block.Empty);
+      sim.state.fuel = 0.0001;
+      sim.hold([], 1).hold([], Math.ceil(RECOVERY.rescueSeconds * 60) + 1);
+      // The pod stays put at the station: no fall, no second tow.
+      sim.hold([], 120);
+      return sim;
+    };
+    const one = dug([15]);
+    expect([colOf(one.pod.x), rowOf(one.pod.y)]).toEqual([16, -1]);
+    expect(buildingAt(one.pod)?.id).toBe('fuel');
+    expect(one.events('RescueStarted')).toHaveLength(1);
+
+    const all = dug([14, 15, 16]);
+    expect([colOf(all.pod.x), rowOf(all.pod.y)]).toEqual([15, -1]);
+    expect(all.state.grid.get(15, 0)).toBe(Block.Dirt);
+    expect(all.events('RescueStarted')).toHaveLength(1);
   });
 
   it('needs no drone when the tank runs dry at the fuel station', () => {

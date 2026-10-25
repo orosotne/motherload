@@ -1,7 +1,7 @@
 import type { EventBus } from '../core/events';
 import { ECONOMY, FALL, RECOVERY } from '../data/economy';
 import { WORLD } from '../data/world';
-import { buildingCenter } from './buildings';
+import { buildingColumns, columnsByDistance, landingColumn } from './buildings';
 import { loseAllCargo, loseHalfCargo } from './cargo';
 import type { DamageSource, GameEvents } from './events';
 import type { GameState } from './game';
@@ -65,7 +65,7 @@ export function stepRecovery(
     const fee = Math.round(state.cash * ECONOMY.rescueFeeShare);
     state.cash -= fee;
     const lostUnits = loseHalfCargo(state.cargo);
-    state.pod = createPod(buildingCenter('fuel'), -1, halfSize);
+    state.pod = createPod(landingColumn(state.grid, buildingColumns('fuel')), -1, halfSize);
     state.status = { kind: 'play' };
     events.emit('Rescued', { fee, lostUnits });
     return;
@@ -77,7 +77,8 @@ export function stepRecovery(
   const lostUnits = loseAllCargo(state.cargo);
   state.hull = state.stats.maxHull;
   state.fuel = state.stats.tankLiters;
-  state.pod = createPod(WORLD.spawnCol, -1, halfSize);
+  const columns = columnsByDistance(WORLD.spawnCol, 0, state.grid.width - 1);
+  state.pod = createPod(landingColumn(state.grid, columns), -1, halfSize);
   state.status = { kind: 'play' };
   events.emit('Respawned', { fee, lostUnits });
 }

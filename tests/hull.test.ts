@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Block } from '../src/data/blocks';
 import { RECOVERY } from '../src/data/economy';
 import { cargoUnits } from '../src/sim/cargo';
 import { colOf, rowOf } from '../src/sim/pod';
@@ -47,5 +48,14 @@ describe('destruction (§3)', () => {
     expect(sim.state.fuel).toBe(sim.state.stats.tankLiters);
     expect(sim.state.tiers.drill).toBe(2);
     expect([colOf(sim.pod.x), rowOf(sim.pod.y)]).toEqual([20, -1]);
+  });
+
+  it('puts the new pod next to the start column when the player dug a shaft there', () => {
+    const sim = new Sim(gridFrom(shaft(6)), 3, 0);
+    sim.state.grid.set(20, 0, Block.Empty);
+    sim.state.hull = 5;
+    sim.until((s) => s.events('Destroyed').length > 0);
+    sim.hold([], Math.ceil(RECOVERY.respawnSeconds * 60) + 1).hold([], 60);
+    expect([colOf(sim.pod.x), rowOf(sim.pod.y)]).toEqual([21, -1]);
   });
 });
