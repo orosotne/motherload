@@ -34,5 +34,6 @@ Malé rozhodnutia, ktoré GAME_SPEC.md nechala otvorené (§11.7). Väčšie zme
 ### Debug nástroje
 
 - **Vlastný FPS meter namiesto stats.js:** žiadna nová závislosť a ukazuje aj CPU čas a draw calls z rozpočtu.
+- **`#debug` funguje rovnako ako `?debug`.** Náhľad na claude.ai do stránky nepustí query string, len kotvu za `#`.
 - **Kláves vľavo od 1** reaguje na kódy `Backquote` aj `IntlBackslash`. Na Macu s ISO klávesnicou, teda aj slovenskou, ho prehliadače hlásia rôzne.
 - **Testovacia scéna je dočasná.** `sim/demoSpin.ts` a `render/demoCube.ts` v F1 nahradí modul.

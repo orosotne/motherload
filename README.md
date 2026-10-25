@@ -29,7 +29,7 @@ Potom otvor http://localhost:5173 v Chrome alebo Safari.
 
 ## Debug nástroje
 
-V dev režime sú zapnuté vždy. V produkčnom builde ich zapneš pridaním `?debug` do adresy, napríklad http://localhost:4173/?debug.
+V dev režime sú zapnuté vždy. V produkčnom builde ich zapneš pridaním `?debug` alebo `#debug` do adresy, napríklad http://localhost:4173/?debug.
 
 - **FPS meter** vľavo dole: fps, čas snímky, CPU čas a draw calls (rozpočet je 200).
 - **Panel** vpravo hore: pauza a krokovanie simulácie, spomalenie, interpolácia, kamera.

@@ -35,8 +35,11 @@ const loop = new GameLoop({
 });
 loop.start();
 
-// Debug tools: always in dev mode; in a production build only with ?debug in the URL.
-if (import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')) {
+// Debug tools: always in dev mode. A production build shows them with ?debug in the URL, or with
+// #debug where the query string never reaches the page (the claude.ai preview).
+const debugRequested =
+  new URLSearchParams(window.location.search).has('debug') || window.location.hash === '#debug';
+if (import.meta.env.DEV || debugRequested) {
   void import('./ui/debug/debugPanel')
     .then(({ createDebugTools }) => {
       debug = createDebugTools({ loop, camera: rig, renderInfo: renderer.info, demo });

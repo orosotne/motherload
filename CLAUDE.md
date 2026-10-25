@@ -6,7 +6,7 @@ Záväzná špecifikácia hry je GAME_SPEC.md. Pri konflikte má prednosť.
 
 - `npm run check`: typecheck, lint, formát a testy. Spusti pred každým commitom.
 - `npm run build`: typecheck a produkčný build. Musí prejsť pred hlásením „hotovo“ (§11.3).
-- `npm run dev`, `npm run preview`: dev server a produkčný build. Debug nástroje v builde zapne `?debug`.
+- `npm run dev`, `npm run preview`: dev server a produkčný build. Debug nástroje v builde zapne `?debug` alebo `#debug`.
 
 ## Kde čo je
 
