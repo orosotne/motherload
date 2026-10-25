@@ -23,7 +23,7 @@ const MINOR = [0, 2, 3, 5, 7, 8, 10];
 
 /**
  * Music (§8): a cheerful tune on the surface and an ambient loop for each zone, from sunny to
- * tense, wondrous, dangerous and mysterious.
+ * tense, wondrous, dangerous and mysterious, plus the finale's escape and celebration.
  */
 const TRACKS: Readonly<Record<string, Track>> = {
   surface: {
@@ -79,6 +79,25 @@ const TRACKS: Readonly<Record<string, Track>> = {
     melody: [null, 7, null, null, 6, null, null, null, 5, null, null, 4, null, null, null, null],
     wave: 'sine',
     drums: 'heartbeat',
+  },
+  // The finale (§7): a fast, urgent escape, then the planet's celebration on the surface.
+  escape: {
+    bpm: 150,
+    root: 50,
+    scale: MINOR,
+    chords: [0, 5, 6, 4],
+    melody: [0, 2, 3, 4, 3, 2, 0, null, 4, 5, 6, 7, 6, 4, null, null],
+    wave: 'square',
+    drums: 'pulse',
+  },
+  ending: {
+    bpm: 120,
+    root: 62,
+    scale: MAJOR,
+    chords: [0, 4, 5, 3],
+    melody: [7, null, 9, 7, 11, 9, 7, null, 4, 5, 7, null, 9, null, null, null],
+    wave: 'triangle',
+    drums: 'hats',
   },
 };
 
@@ -208,7 +227,7 @@ export class Music {
 
   constructor(private readonly audio: AudioEngine) {}
 
-  /** `id`: 'surface' or 'zone1' … 'zone5'. Call every frame; it only acts on a change. */
+  /** `id`: a track, e.g. 'surface', 'zone3' or 'escape'. Call every frame; acts on a change. */
   update(id: string): void {
     const { context, music } = this.audio;
     if (!context || !music) return;

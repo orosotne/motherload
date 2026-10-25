@@ -6,11 +6,16 @@ import { hardnessAt } from '../sim/drilling';
 import { AudioEngine } from './engine';
 import { Music } from './music';
 import { Sfx } from './sfx';
+import { StorySfx } from './storySfx';
 
-/** Sound for the game (§8): effects on events, the drill and engine loops, music per zone. */
+/**
+ * Sound for the game (§8): effects on events, the drill and engine loops, music per zone and for
+ * the finale.
+ */
 export class GameAudio {
   readonly engine = new AudioEngine();
   readonly sfx = new Sfx(this.engine);
+  readonly story = new StorySfx(this.sfx);
   private readonly music = new Music(this.engine);
 
   constructor(
@@ -45,6 +50,12 @@ export class GameAudio {
     events.on('Teleported', () => sfx.teleport());
     events.on('RescueStarted', () => sfx.drone());
     events.on('Destroyed', () => sfx.explosion(2));
+    const { story } = this;
+    events.on('Earthquake', () => story.quake());
+    events.on('Collapse', () => story.collapse());
+    events.on('HeartIgnited', () => story.ignite());
+    events.on('EscapeFailed', () => story.escapeFailed());
+    events.on('FinaleWon', () => story.fanfare());
   }
 
   /**
@@ -63,6 +74,14 @@ export class GameAudio {
       this.sfx.drillOff();
     }
     this.sfx.thrust(playing ? pod.thrust : 0);
-    this.music.update(rowOf(pod.y) < 0 ? 'surface' : `zone${state.zone}`);
+    this.music.update(this.track());
+  }
+
+  /** The zone's music; the finale has its own, and after it the surface celebrates (§7). */
+  private track(): string {
+    const { state } = this;
+    if (state.finale) return 'escape';
+    if (rowOf(state.pod.y) < 0) return state.story.finished ? 'ending' : 'surface';
+    return `zone${state.zone}`;
   }
 }
