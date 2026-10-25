@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Input } from '../src/core/input';
+import { DEFAULT_KEYS, keyboardMap } from '../src/data/controls';
 
 function key(type: 'keydown' | 'keyup', code: string, repeat = false): Event {
   return Object.assign(new Event(type, { cancelable: true }), { code, repeat });
@@ -92,5 +93,19 @@ describe('Input', () => {
     source.dispatchEvent(letter);
     expect(space.defaultPrevented).toBe(true);
     expect(letter.defaultPrevented).toBe(false);
+  });
+});
+
+describe('Input with chosen keys', () => {
+  it('follows a new keyboard layout at once', () => {
+    const { source, input } = setup();
+    input.setKeymap(keyboardMap({ ...DEFAULT_KEYS, left: 'KeyJ' }));
+    source.dispatchEvent(key('keydown', 'KeyJ'));
+    source.dispatchEvent(key('keydown', 'KeyA'));
+    const frame = input.sample();
+    expect(frame.held.left).toBe(true);
+    expect(frame.pressed.left).toBe(true);
+    source.dispatchEvent(key('keyup', 'KeyJ'));
+    expect(input.sample().held.left).toBe(false);
   });
 });
