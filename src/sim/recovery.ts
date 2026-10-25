@@ -5,11 +5,23 @@ import { buildingColumns, columnsByDistance, landingColumn } from './buildings';
 import { loseAllCargo, loseHalfCargo } from './cargo';
 import type { DamageSource, GameEvents } from './events';
 import type { GameState } from './game';
+import { autoUse } from './items';
 import { createPod } from './pod';
 
-/** Fall damage (§3, §7): free up to 3 blocks, then 4 HP per further block. */
-export function fallDamage(fallHeight: number): number {
-  return FALL.hpPerBlock * Math.max(0, Math.round(fallHeight) - FALL.safeBlocks);
+/**
+ * Fall damage (§3, §7): free up to `safeBlocks` (3, or 0 with forgiveness off, §5.11), then
+ * 4 HP per further block.
+ */
+export function fallDamage(fallHeight: number, safeBlocks: number = FALL.safeBlocks): number {
+  return FALL.hpPerBlock * Math.max(0, Math.round(fallHeight) - safeBlocks);
+}
+
+/** Back on the surface after a rescue or a new pod: no heat, no pending damage. */
+function cooledDown(state: GameState): void {
+  state.heat = 0;
+  state.heatLevel = 0;
+  state.damageCarry = 0;
+  state.inLava = false;
 }
 
 function freeze(state: GameState): void {
@@ -35,7 +47,7 @@ export function damage(
   if (amount <= 0 || state.status.kind !== 'play') return;
   state.hull = Math.max(0, state.hull - amount);
   events.emit('Damaged', { amount, source, hull: state.hull });
-  if (state.hull > 0) return;
+  if (state.hull > 0 || autoUse(state, 'repairKit', events)) return;
   freeze(state);
   state.status = { kind: 'respawn', left: RECOVERY.respawnSeconds };
   events.emit('Destroyed', { cause: source });
@@ -67,6 +79,7 @@ export function stepRecovery(
     const lostUnits = loseHalfCargo(state.cargo);
     state.pod = createPod(landingColumn(state.grid, buildingColumns('fuel')), -1, halfSize);
     state.status = { kind: 'play' };
+    cooledDown(state);
     events.emit('Rescued', { fee, lostUnits });
     return;
   }
@@ -80,5 +93,6 @@ export function stepRecovery(
   const columns = columnsByDistance(WORLD.spawnCol, 0, state.grid.width - 1);
   state.pod = createPod(landingColumn(state.grid, columns), -1, halfSize);
   state.status = { kind: 'play' };
+  cooledDown(state);
   events.emit('Respawned', { fee, lostUnits });
 }

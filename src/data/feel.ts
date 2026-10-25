@@ -48,6 +48,11 @@ export interface FeelConfig {
   };
   /** 10. Engine curve: thrust builds up and dies down instead of switching. */
   engine: { enabled: boolean; rampUpSeconds: number; rampDownSeconds: number };
+  /**
+   * 11. Forgiveness: falls up to 3 blocks cost nothing, and letting go of the direction within
+   * this time after a gas pocket starts hissing stops the drilling.
+   */
+  forgiveness: { enabled: boolean; gasAbortMs: number };
 }
 
 export const FEEL: Readonly<FeelConfig> = {
@@ -74,4 +79,5 @@ export const FEEL: Readonly<FeelConfig> = {
   },
   camera: { enabled: true, followRate: 8, lookahead: 3, fallLookahead: 5, climbLookahead: 1.5 },
   engine: { enabled: true, rampUpSeconds: 0.25, rampDownSeconds: 0.12 },
+  forgiveness: { enabled: true, gasAbortMs: 300 },
 };

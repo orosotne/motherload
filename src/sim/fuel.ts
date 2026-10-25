@@ -3,6 +3,7 @@ import { BUILDINGS } from '../data/buildings';
 import { FUEL } from '../data/economy';
 import type { GameEvents } from './events';
 import type { GameState } from './game';
+import { autoUse } from './items';
 import { colOf, rowOf, type Pod } from './pod';
 import type { MotionControls } from './podMotion';
 import { startRescue } from './recovery';
@@ -27,7 +28,7 @@ function atFuelStation(pod: Pod): boolean {
 
 /**
  * Fuel warnings at 20 % and 10 % (§3), each announced once on the way down, and the rescue
- * drone when the tank runs dry.
+ * drone when the tank runs dry, unless a fuel cell on board fills it up first.
  */
 export function checkFuel(state: GameState, events: EventBus<GameEvents>): void {
   const share = state.fuel / state.stats.tankLiters;
@@ -36,7 +37,10 @@ export function checkFuel(state: GameState, events: EventBus<GameEvents>): void 
     events.emit('FuelAlert', { level });
   }
   state.fuelAlert = level;
-  if (state.fuel <= 0 && state.status.kind === 'play' && !atFuelStation(state.pod)) {
-    startRescue(state, events);
+  if (state.fuel > 0 || state.status.kind !== 'play' || atFuelStation(state.pod)) return;
+  if (autoUse(state, 'fuelCell', events)) {
+    state.fuelAlert = 0;
+    return;
   }
+  startRescue(state, events);
 }

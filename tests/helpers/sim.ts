@@ -65,6 +65,19 @@ const ALL_EVENTS: Record<EventType, true> = {
   Sold: true,
   Refueled: true,
   Repaired: true,
+  GasHiss: true,
+  DrillAborted: true,
+  Explosion: true,
+  LavaContact: true,
+  Overheat: true,
+  RelicFound: true,
+  UpgradeBought: true,
+  ItemBought: true,
+  ItemUsed: true,
+  ItemRefused: true,
+  SlotSelected: true,
+  AnchorSet: true,
+  Teleported: true,
 };
 const EVENT_TYPES = Object.keys(ALL_EVENTS) as EventType[];
 

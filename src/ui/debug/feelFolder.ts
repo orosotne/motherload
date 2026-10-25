@@ -42,5 +42,9 @@ export function addFeelFolder(gui: GUI, feel: FeelConfig): void {
   engine.add(feel.engine, 'rampUpSeconds', 0.02, 1, 0.01).name('ramp up (s)');
   engine.add(feel.engine, 'rampDownSeconds', 0.02, 1, 0.01).name('ramp down (s)');
 
+  const forgiveness = folder.addFolder('11 forgiveness');
+  forgiveness.add(feel.forgiveness, 'enabled');
+  forgiveness.add(feel.forgiveness, 'gasAbortMs', 0, 800, 10).name('gas abort window (ms)');
+
   for (const child of folder.folders) child.close();
 }

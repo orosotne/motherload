@@ -1,5 +1,6 @@
 import type { EventBus } from '../core/events';
 import type { InputFrame } from '../core/input';
+import { Block } from '../data/blocks';
 import { hardnessAt, startDrill } from './drilling';
 import type { GameEvents } from './events';
 import type { GameState, SimSettings } from './game';
@@ -49,6 +50,10 @@ export function tryDrill(
       seconds: drill.duration,
       hardness: hardnessAt(state.grid, drill.col, drill.row) ?? 0,
     });
+    // A gas pocket hisses as the drill bites (§5.11): letting go now stops it.
+    if (state.grid.get(drill.col, drill.row) === Block.Gas) {
+      events.emit('GasHiss', { col: drill.col, row: drill.row });
+    }
     return;
   }
 }

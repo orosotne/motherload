@@ -17,9 +17,14 @@ export function buildingCenter(id: BuildingId): number {
   return building ? Math.round((building.firstCol + building.lastCol) / 2) : WORLD.spawnCol;
 }
 
-/** Depth in metres shown in the HUD: 0 on the surface, 4 m per row below (§4). */
+/** Depth of a row in metres, measured at its bottom: 0 on the surface, 4 m per row (§4). */
+export function rowDepth(row: number): number {
+  return Math.max(0, row + 1) * WORLD.metersPerBlock;
+}
+
+/** Depth in metres shown in the HUD. */
 export function depthMeters(pod: Pod): number {
-  return Math.max(0, rowOf(pod.y) + 1) * WORLD.metersPerBlock;
+  return rowDepth(rowOf(pod.y));
 }
 
 /** Columns from `first` to `last`, nearest to `center` first: center, center + 1, center − 1, … */
