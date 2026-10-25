@@ -23,11 +23,18 @@ const CELLS: Readonly<Record<string, BlockId>> = {
   X: Block.Corestone,
 };
 
-/** Builds a grid from text rows: `#` dirt, `.` empty, `C` clay, `X` corestone. Row 0 comes first. */
+/**
+ * Builds a grid from text rows: `#` dirt, `.` empty, `C` clay, `X` corestone, a digit is ore of
+ * that mineral id. Row 0 comes first.
+ */
 export function gridFrom(rows: readonly string[], skyRows = 12): Grid {
   const grid = new Grid(rows[0]?.length ?? 0, rows.length, 20, skyRows);
   rows.forEach((line, row) => {
     [...line].forEach((char, col) => {
+      if (/[1-9]/.test(char)) {
+        grid.set(col, row, Block.Ore, Number(char));
+        return;
+      }
       const block = CELLS[char];
       if (block === undefined) throw new Error(`Unknown cell "${char}"`);
       if (block !== Block.Empty) grid.set(col, row, block);
@@ -37,12 +44,26 @@ export function gridFrom(rows: readonly string[], skyRows = 12): Grid {
 }
 
 type EventType = keyof GameEvents;
-const EVENT_TYPES: readonly EventType[] = [
-  'DrillStarted',
-  'BlockBroken',
-  'Landed',
-  'EngineStarted',
-];
+/** Every event type; the Record makes the compiler insist on new ones being added here. */
+const ALL_EVENTS: Record<EventType, true> = {
+  DrillStarted: true,
+  BlockBroken: true,
+  Landed: true,
+  EngineStarted: true,
+  MineralCollected: true,
+  CargoFull: true,
+  Damaged: true,
+  FuelAlert: true,
+  ZoneEntered: true,
+  RescueStarted: true,
+  Rescued: true,
+  Destroyed: true,
+  Respawned: true,
+  Sold: true,
+  Refueled: true,
+  Repaired: true,
+};
+const EVENT_TYPES = Object.keys(ALL_EVENTS) as EventType[];
 
 export interface Logged<K extends EventType = EventType> {
   tick: number;
@@ -56,7 +77,7 @@ export class Sim {
   readonly state: GameState;
   readonly log: Logged[] = [];
   tick = 0;
-  private readonly bus = new EventBus<GameEvents>();
+  private readonly eventBus = new EventBus<GameEvents>();
   private held = new Set<Action>();
 
   constructor(grid: Grid, col: number, row: number, settings: SimSettings = defaultSettings()) {
@@ -64,12 +85,16 @@ export class Sim {
     this.state = createGame(grid, settings);
     this.state.pod = createPod(col, row, settings.pod.halfSize);
     for (const type of EVENT_TYPES) {
-      this.bus.on(type, (payload) => this.log.push({ tick: this.tick, type, payload }));
+      this.eventBus.on(type, (payload) => this.log.push({ tick: this.tick, type, payload }));
     }
   }
 
   get pod(): GameState['pod'] {
     return this.state.pod;
+  }
+
+  get bus(): EventBus<GameEvents> {
+    return this.eventBus;
   }
 
   /** Holds exactly `actions` for `ticks` ticks; newly held actions count as pressed on the first. */
@@ -107,6 +132,6 @@ export class Sim {
       pressedNow[action] = pressed.includes(action);
     }
     const frame: InputFrame = { held, pressed: pressedNow };
-    stepGame(this.state, frame, DT, this.settings, this.bus);
+    stepGame(this.state, frame, DT, this.settings, this.eventBus);
   }
 }
