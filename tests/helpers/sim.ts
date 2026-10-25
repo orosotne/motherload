@@ -78,6 +78,14 @@ const ALL_EVENTS: Record<EventType, true> = {
   SlotSelected: true,
   AnchorSet: true,
   Teleported: true,
+  Radio: true,
+  Earthquake: true,
+  HeartIgnited: true,
+  EscapeStarted: true,
+  EscapeFailed: true,
+  FinaleAbandoned: true,
+  Collapse: true,
+  FinaleWon: true,
 };
 const EVENT_TYPES = Object.keys(ALL_EVENTS) as EventType[];
 

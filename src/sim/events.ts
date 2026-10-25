@@ -1,12 +1,21 @@
 import type { BlockId } from '../data/blocks';
 import type { ItemId } from '../data/items';
+import type { RadioMessage } from '../data/story';
 import type { UpgradeBranch } from '../data/upgrades';
 import type { DrillDir } from './pod';
 
 export type DamageSource = 'fall' | 'gas' | 'lava' | 'heat';
 
 /** Why an item could not be used right now. */
-export type ItemRefusal = 'tankFull' | 'hullFull' | 'surface' | 'busy' | 'noAnchor' | 'empty';
+export type ItemRefusal =
+  | 'tankFull'
+  | 'hullFull'
+  | 'surface'
+  | 'busy'
+  | 'noAnchor'
+  | 'empty'
+  /** The beacon does not work while the core collapses: the escape is the way out. */
+  | 'escape';
 
 /**
  * Facts the simulation announces (GAME_SPEC §9.5). Renderer, audio and UI react to them; they
@@ -58,4 +67,20 @@ export interface GameEvents {
   AnchorSet: { col: number; row: number };
   /** The pod jumped elsewhere: back to the surface (beacon) or down to an anchor. */
   Teleported: { cause: 'beacon' | 'anchor' };
+  /** A radio message starts (§7). */
+  Radio: { message: RadioMessage };
+  /** The first visit to a deep zone shook the ground and opened a cave (§7). */
+  Earthquake: { zone: number; col: number; row: number };
+  /** The Heart catches fire: the finale begins (§7). */
+  HeartIgnited: Record<string, never>;
+  /** The core collapses; the lava rises and the escape is on. `attempt` counts from 1. */
+  EscapeStarted: { attempt: number; seconds: number };
+  /** The lava caught the pod; the escape starts over from the Heart. */
+  EscapeFailed: { attempts: number };
+  /** The player gave the escape up: towed to the station, the Heart dim again. */
+  FinaleAbandoned: Record<string, never>;
+  /** Part of the collapsing core broke open during the escape. */
+  Collapse: { col: number; row: number };
+  /** The pod made it to the surface: the ending (§7), with the epilogue for all ten relics. */
+  FinaleWon: { allRelics: boolean; attempts: number };
 }

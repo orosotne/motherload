@@ -6,8 +6,12 @@ import { ECONOMY, FALL, FUEL } from '../data/economy';
 import { FEEL, type FeelConfig } from '../data/feel';
 import { POD, type PodConfig } from '../data/pod';
 import { RELICS } from '../data/relics';
+import { QUAKE_ZONES } from '../data/story';
 import { WORLD } from '../data/world';
 import { zoneAt } from '../data/zones';
+import { stepEscape, stepFinaleFirst, tryIgnite, type FinaleState } from '../story/finale';
+import { quake } from '../story/quakes';
+import { createStory, type StoryState } from '../story/state';
 import type { Grid } from '../world/grid';
 import { collectMineral, emptyCargo, type Cargo } from './cargo';
 import { bufferSeconds, IDLE_CONTROLS, motionControls, tryDrill } from './control';
@@ -71,6 +75,10 @@ export interface GameState {
   deepestZone: number;
   /** Simulation time of each action's latest press, for the input and landing buffers (§5). */
   pressedAt: Record<Action, number>;
+  /** What the story has told and done so far (§7). */
+  story: StoryState;
+  /** The finale while it runs: the Heart catching fire, then the escape. */
+  finale: FinaleState | null;
 }
 
 export function createGame(grid: Grid, settings: SimSettings, seed = 0): GameState {
@@ -101,6 +109,8 @@ export function createGame(grid: Grid, settings: SimSettings, seed = 0): GameSta
     zone: 1,
     deepestZone: 1,
     pressedAt,
+    story: createStory(),
+    finale: null,
   };
 }
 
@@ -112,6 +122,7 @@ function trackZone(state: GameState, events: EventBus<GameEvents>): void {
   const first = zone > state.deepestZone;
   state.deepestZone = Math.max(state.deepestZone, zone);
   events.emit('ZoneEntered', { zone, first });
+  if (first && QUAKE_ZONES.includes(zone)) quake(state, zone, events);
 }
 
 const SLOT_ACTIONS: readonly Action[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
@@ -162,11 +173,15 @@ export function stepGame(
   for (const action of ACTIONS) if (input.pressed[action]) state.pressedAt[action] = state.time;
   state.pod.prevX = state.pod.x;
   state.pod.prevY = state.pod.y;
+  const half = settings.pod.halfSize;
 
+  if (stepFinaleFirst(state, dt, half, events)) return;
   if (state.status.kind !== 'play') {
-    stepRecovery(state, dt, settings.pod.halfSize, events);
+    stepRecovery(state, dt, half, events);
     return;
   }
+  // By the Heart with enough relics, "enter" reignites it (§7).
+  if (input.pressed.enter && tryIgnite(state, events)) return;
   handleEquipment(state, input, settings, events);
 
   const { pod } = state;
@@ -209,8 +224,9 @@ export function stepGame(
   }
 
   if (state.status.kind !== 'play') return;
-  stepLava(state, settings.pod.halfSize, dt, events);
+  stepLava(state, half, dt, events);
   stepHeat(state, dt, events);
   trackZone(state, events);
   checkFuel(state, events);
+  stepEscape(state, dt, half, events);
 }
