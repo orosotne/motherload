@@ -16,6 +16,8 @@ export interface PanelAction {
   run: () => void;
   /** Left and right on the focused button change its value, like a slider. */
   adjust?: (step: -1 | 1) => void;
+  /** Enter in a text field of the panel chooses this action, as in a form. */
+  submit?: boolean;
 }
 
 export interface PanelView {
@@ -240,8 +242,14 @@ export class PanelHost {
   private onKey(event: KeyboardEvent): void {
     if (!this.isOpen || event.repeat) return;
     if (isEditable(event.target)) {
-      // Typing a seed: the keys are letters, not menu moves; Esc leaves the field.
+      // Typing a seed: the keys are letters, not menu moves. Esc leaves the field; Enter
+      // chooses the panel's submit action, which then holds the focus.
       if (event.code === 'Escape' && event.target instanceof HTMLElement) event.target.blur();
+      const submit = this.actions.findIndex((action) => action.submit);
+      if ((event.code === 'Enter' || event.code === 'NumpadEnter') && submit >= 0) {
+        event.preventDefault();
+        this.buttons[submit]?.click();
+      }
       return;
     }
     const direction = DIRECTIONS[event.code];

@@ -73,7 +73,7 @@ export class Menus {
   }
 
   newGame(back: () => void): void {
-    const state = { seed: '', armed: null, missing: false };
+    const state = { seed: '', armed: null, random: null, missing: false };
     const context = {
       played: this.played,
       start: this.c.newGame,

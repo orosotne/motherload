@@ -70,15 +70,21 @@ export interface NewGameState {
   seed: string;
   /** The seed that waits for the second press, when a game in progress would be wiped. */
   armed: number | null;
+  /** The random world on offer: the same one until it starts, so a second press confirms it. */
+  random: number | null;
   /** The seed button was chosen with nothing typed. */
   missing: boolean;
 }
 
 /**
- * A new game (GAME_SPEC §7, F6): a random world, or the world of a seed the player types (a
- * number shown in the game, or any word). Wiping a game in progress takes a second press.
+ * What the new-game panel does, apart from how it looks: start a random world or the typed
+ * one. With a game in progress the first choice of a world only asks; choosing the same world
+ * again wipes the game and starts it.
  */
-export function newGameView(context: NewGameContext, state: NewGameState): PanelView {
+export function newGameChoices(
+  context: NewGameContext,
+  state: NewGameState,
+): { random: () => void; typed: () => void } {
   const start = (seed: number): void => {
     if (context.played && state.armed !== seed) {
       state.armed = seed;
@@ -86,6 +92,27 @@ export function newGameView(context: NewGameContext, state: NewGameState): Panel
     }
     context.start(seed);
   };
+  return {
+    random: () => {
+      state.missing = false;
+      state.random ??= context.randomSeed();
+      start(state.random);
+    },
+    typed: () => {
+      // What is typed now, not what was typed when the panel was drawn.
+      const seed = state.seed.trim();
+      state.missing = seed === '';
+      if (seed !== '') start(parseSeed(seed));
+    },
+  };
+}
+
+/**
+ * A new game (GAME_SPEC §7, F6): a random world, or the world of a seed the player types (a
+ * number shown in the game, or any word). Wiping a game in progress takes a second press.
+ */
+export function newGameView(context: NewGameContext, state: NewGameState): PanelView {
+  const choose = newGameChoices(context, state);
   const field = document.createElement('label');
   field.className = 'seed-field';
   const caption = document.createElement('span');
@@ -100,11 +127,6 @@ export function newGameView(context: NewGameContext, state: NewGameState): Panel
   input.addEventListener('input', () => {
     state.seed = input.value;
   });
-  input.addEventListener('keydown', (event) => {
-    if (event.code !== 'Enter' || state.seed.trim() === '') return;
-    event.preventDefault();
-    start(parseSeed(state.seed));
-  });
   field.append(caption, input);
   let note = state.armed === null ? '' : t('newGame.confirm');
   if (state.missing) note = t('newGame.typeSeed');
@@ -117,23 +139,9 @@ export function newGameView(context: NewGameContext, state: NewGameState): Panel
     noClose: true,
     back: context.back,
     actions: [
-      {
-        label: t('newGame.random'),
-        run: () => {
-          state.missing = false;
-          state.armed = state.armed ?? context.randomSeed();
-          start(state.armed);
-        },
-      },
-      {
-        label: t('newGame.fromSeed'),
-        run: () => {
-          // What is typed now, not what was typed when the panel was drawn.
-          const seed = state.seed.trim();
-          state.missing = seed === '';
-          if (seed !== '') start(parseSeed(seed));
-        },
-      },
+      { label: t('newGame.random'), run: choose.random },
+      // Enter in the seed field chooses it too, and the panel shows what happens next.
+      { label: t('newGame.fromSeed'), run: choose.typed, submit: true },
       { label: t('menu.back'), run: context.back },
     ],
   };
