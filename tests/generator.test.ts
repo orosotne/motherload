@@ -3,6 +3,7 @@ import { Block } from '../src/data/blocks';
 import { SOLID_TOP_ROWS, TOWN_COLUMNS } from '../src/data/generation';
 import { MINERALS } from '../src/data/minerals';
 import { RELICS, relicRow } from '../src/data/relics';
+import { HEART } from '../src/data/story';
 import { ZONES, zoneAt } from '../src/data/zones';
 import { generateWorld } from '../src/world/generator';
 import type { Grid } from '../src/world/grid';
@@ -39,6 +40,7 @@ describe('generateWorld', () => {
               Block.Gas,
               Block.Lava,
               Block.Relic,
+              Block.Heart,
             ] as number[];
             if (!special.includes(block)) expect(block).toBe(zone.base);
           }
@@ -168,6 +170,18 @@ describe('generateWorld', () => {
         }
       }
       expect(found).toEqual(RELICS.depthsMeters.map((_, index) => relicRow(index)));
+    }
+  });
+
+  it("digs the Heart's chamber at the bottom, with the Heart on its floor, within reach", () => {
+    const { chamber, cols, rows } = HEART;
+    for (const grid of worlds) {
+      for (const row of rows) for (const col of cols) expect(grid.get(col, row)).toBe(Block.Heart);
+      expect(grid.get(chamber.firstCol, chamber.firstRow)).toBe(Block.Empty);
+      expect(grid.get(chamber.lastCol, chamber.lastRow)).toBe(Block.Empty);
+      expect(grid.get(cols[0], chamber.lastRow + 1)).not.toBe(Block.Empty);
+      const reachable = reachableCells(grid);
+      expect(reachable[chamber.firstRow * grid.width + chamber.firstCol]).toBe(1);
     }
   });
 

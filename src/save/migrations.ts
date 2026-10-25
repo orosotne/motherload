@@ -59,11 +59,15 @@ function world(raw: unknown): number[] {
     Number.isInteger(value) && (value as number) >= 0 && (value as number) < below
       ? (value as number)
       : -1;
+  // Every block id the grid stores; Bedrock only exists outside it.
+  const blocks = new Set<number>(Object.values(Block).filter((id) => id !== Block.Bedrock));
   for (let i = 0; i + 2 < values.length; i += 3) {
     const cell = int(values[i], cells);
-    const block = int(values[i + 1], Block.Bedrock);
+    const block = values[i + 1];
     const mineral = int(values[i + 2], MAX_MINERAL_ID + 1);
-    if (cell >= 0 && block >= 0 && mineral >= 0) out.push(cell, block, mineral);
+    if (cell >= 0 && blocks.has(block as number) && mineral >= 0) {
+      out.push(cell, block as number, mineral);
+    }
   }
   return out;
 }
