@@ -117,5 +117,16 @@
   "relic.7": "Zborový kameň",
   "relic.8": "Kľúč od krbu",
   "relic.9": "Posledný list",
-  "relic.10": "Iskra Srdca"
+  "relic.10": "Iskra Srdca",
+  "pause.title": "Pauza",
+  "pause.line": "Vydýchni si. Skala počká.",
+  "pause.continue": "Pokračovať",
+  "pause.master": "Hlasitosť",
+  "pause.music": "Hudba",
+  "pause.sfx": "Zvukové efekty",
+  "pause.language": "Jazyk",
+  "pause.languageName": "Slovenčina",
+  "pause.keys": "Klávesy: A D / šípky jazda a vŕtanie, W alebo medzerník let, S vŕtanie dole, E vstup, 1 až 5 a F vybavenie, Esc pauza.",
+  "pause.pad": "Ovládač: páčka alebo D-pad jazda a vŕtanie, A let, X použiť, Y vstup, L R slot, Start pauza.",
+  "hud.padConnected": "Ovládač pripojený"
 }

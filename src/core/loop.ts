@@ -73,6 +73,7 @@ export class GameLoop {
   private lastTimeMs: number | null = null;
   private manualSteps = 0;
   private updateMs = 0;
+  private frozenMs = 0;
 
   constructor(
     private readonly handlers: LoopHandlers,
@@ -105,6 +106,14 @@ export class GameLoop {
     if (this.controls.paused) this.manualSteps += 1;
   }
 
+  /**
+   * Hitstop (GAME_SPEC §5.5): the simulation holds still for `ms` of real time while frames keep
+   * drawing. The held time is skipped, not caught up afterwards.
+   */
+  freeze(ms: number): void {
+    this.frozenMs = Math.max(this.frozenMs, ms);
+  }
+
   private readonly frame = (timeMs: number): void => {
     const frameMs = this.lastTimeMs === null ? 0 : timeMs - this.lastTimeMs;
     this.lastTimeMs = timeMs;
@@ -113,6 +122,9 @@ export class GameLoop {
     if (this.controls.paused) {
       steps = this.manualSteps;
       this.manualSteps = 0;
+    } else if (this.frozenMs > 0) {
+      this.frozenMs = Math.max(this.frozenMs - frameMs, 0);
+      steps = 0;
     } else {
       steps = this.clock.advance(frameMs * this.controls.timeScale);
     }

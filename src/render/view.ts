@@ -1,18 +1,23 @@
-import { MathUtils, type Scene, type WebGLRenderer } from 'three';
+import { MathUtils, Vector3, type Scene, type WebGLRenderer } from 'three';
 import type { EventBus } from '../core/events';
 import { ENGINE } from '../data/engine';
 import type { GameEvents } from '../sim/events';
 import type { GameState, SimSettings } from '../sim/game';
 import { rowOf } from '../sim/pod';
-import { createBackdrop } from './backdrop';
+import { createBlockLooks, type BlockLooks } from './blockLooks';
+import { BloomRenderer } from './bloom';
+import { createBuildings } from './buildingsView';
 import { CameraRig } from './camera';
 import { clampView, followTarget, smoothToward } from './cameraMath';
-import { createBuildings } from './buildingsView';
+import { createChunkBorders } from './chunkBorders';
 import { ChunkRenderer } from './chunkMesher';
+import { createDecorLooks, type DecorLooks } from './decorLooks';
 import { DroneView, rescueProgress, towLift } from './droneView';
 import { Burst } from './effects/burst';
+import { FeelEffects } from './effects/feelFx';
 import { landingTrauma, Shake } from './effects/shake';
-import { createBlockLooks, createDecorLooks } from './materials';
+import { Lighting } from './lighting';
+import { createParallax } from './parallax';
 import { PodView } from './podView';
 import { bindResize, createRenderer } from './renderer';
 import { createScene } from './scene';
@@ -22,21 +27,31 @@ const EDGE_MARGIN = 1;
 const SKY_MARGIN = 3;
 
 /**
- * Everything the player sees of the world: grid, pod and camera. It only reads the simulation
- * state and reacts to its events (GAME_SPEC §9.5).
+ * Everything the player sees of the world (§8): toon blocks with outlined crystals, parallax
+ * cave walls, light and darkness, the pod, effects and bloom. It only reads the simulation state
+ * and reacts to its events (GAME_SPEC §9.5).
  */
 export class GameView {
   readonly renderer: WebGLRenderer;
   readonly rig = new CameraRig();
   private readonly scene: Scene;
+  private readonly bloom: BloomRenderer;
+  private readonly lighting: Lighting;
+  private readonly blockLooks: BlockLooks;
+  private readonly decorLooks: DecorLooks;
   private readonly chunks: ChunkRenderer;
   private readonly pod: PodView;
   private readonly drone = new DroneView();
   private readonly burst = new Burst();
   private readonly blast = new Burst(0.45);
+  private readonly effects: FeelEffects;
   private readonly shake = new Shake();
+  private readonly projected = new Vector3();
+  private readonly borders: ReturnType<typeof createChunkBorders>;
   private cameraX: number;
   private cameraY: number;
+  private time = 0;
+  private readable: boolean;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -46,18 +61,30 @@ export class GameView {
   ) {
     this.renderer = createRenderer(canvas);
     this.scene = createScene();
-    bindResize(this.renderer, (width, height) => this.rig.setAspect(width / height));
+    this.bloom = new BloomRenderer(this.renderer, this.scene, this.rig.camera);
+    bindResize(this.renderer, (width, height) => {
+      this.rig.setAspect(width / height);
+      this.bloom.setSize(width, height);
+    });
+    this.lighting = new Lighting(this.scene);
 
-    this.chunks = new ChunkRenderer(state.grid, createBlockLooks(), createDecorLooks());
+    this.blockLooks = createBlockLooks(settings.feel);
+    this.decorLooks = createDecorLooks(settings.feel);
+    this.readable = settings.feel.readability.enabled;
+    this.chunks = new ChunkRenderer(state.grid, this.blockLooks.look, this.decorLooks.look);
     this.pod = new PodView(settings.pod.halfSize);
+    this.effects = new FeelEffects(state, settings, events);
+    this.borders = createChunkBorders(state.grid);
     this.scene.add(
+      this.borders,
       this.chunks.group,
-      createBackdrop(state.grid),
+      createParallax(state.grid),
       createBuildings(),
       this.pod.root,
       this.drone.root,
       this.burst.mesh,
       this.blast.mesh,
+      this.effects.group,
     );
     this.cameraX = state.pod.x;
     this.cameraY = state.pod.y;
@@ -86,24 +113,69 @@ export class GameView {
     this.cameraY = this.state.pod.y;
   }
 
-  render(alpha: number, frameSeconds: number): void {
+  /** Debug lines on the chunk borders (§9.9). */
+  set chunkBorders(visible: boolean) {
+    this.borders.visible = visible;
+  }
+
+  get chunkBorders(): boolean {
+    return this.borders.visible;
+  }
+
+  /** Where a world point shows on screen, in CSS pixels from the top left. */
+  project(x: number, y: number): { x: number; y: number } {
+    const point = this.projected.set(x, y, 0.5).project(this.rig.camera);
+    const canvas = this.renderer.domElement;
+    return {
+      x: ((point.x + 1) / 2) * canvas.clientWidth,
+      y: ((1 - point.y) / 2) * canvas.clientHeight,
+    };
+  }
+
+  /** `paused`: a menu stops the game, so the pod stops shaking and its drill stops turning. */
+  render(alpha: number, frameSeconds: number, paused = false): void {
     this.renderer.info.reset();
+    this.time += frameSeconds;
+    const { feel } = this.settings;
+    if (feel.readability.enabled !== this.readable) {
+      // Readability (§5.12) was switched in the debug panel: every chunk changes its look.
+      this.readable = feel.readability.enabled;
+      this.chunks.invalidate();
+    }
+    this.blockLooks.update(this.time);
+    this.decorLooks.update(this.time);
+
     const progress = rescueProgress(this.state);
     const lift = towLift(progress);
     const { pod } = this.state;
     this.pod.update(pod, alpha, frameSeconds, {
-      pulses: this.settings.feel.squash.enabled,
+      pulses: feel.squash.enabled,
+      drillShake: feel.drillLife.enabled && !paused ? feel.drillLife.shake : 0,
+      paused,
       hidden: this.state.status.kind === 'respawn',
       lift,
+      tiers: this.state.tiers,
     });
     const podX = pod.prevX + (pod.x - pod.prevX) * alpha;
     const podY = pod.prevY + (pod.y - pod.prevY) * alpha + lift;
     this.drone.update(progress, podX, podY, frameSeconds);
     this.burst.update(frameSeconds);
     this.blast.update(frameSeconds);
+    this.effects.update(frameSeconds);
     this.updateCamera(alpha, frameSeconds, lift);
     this.chunks.update(rowOf(this.cameraY));
-    this.renderer.render(this.scene, this.rig.camera);
+    const { grid, stats } = this.state;
+    this.lighting.update(
+      pod,
+      podX,
+      podY,
+      this.cameraX,
+      this.cameraY,
+      grid,
+      stats.lightRange,
+      frameSeconds,
+    );
+    this.bloom.render();
   }
 
   private onLanded(speed: number): void {

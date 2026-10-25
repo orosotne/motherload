@@ -4,11 +4,11 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   SphereGeometry,
 } from 'three';
 import { RECOVERY } from '../data/economy';
 import type { GameState } from '../sim/game';
+import { toon } from './toon';
 
 /** Share of the rescue spent flying in; the rest is the tow up. */
 const ARRIVE = 0.45;
@@ -42,7 +42,7 @@ export class DroneView {
   private time = 0;
 
   constructor() {
-    const metal = new MeshStandardMaterial({ color: '#59606E', metalness: 0.5, roughness: 0.4 });
+    const metal = toon({ color: '#6B7385' });
     const body = new Mesh(new BoxGeometry(0.8, 0.2, 0.5), metal);
     for (const [x, z] of [
       [-0.45, -0.3],
@@ -52,7 +52,7 @@ export class DroneView {
     ] as const) {
       const rotor = new Mesh(
         new CylinderGeometry(0.22, 0.22, 0.03, 12),
-        new MeshStandardMaterial({ color: '#C9CED8', transparent: true, opacity: 0.7 }),
+        toon({ color: '#C9CED8', transparent: true, opacity: 0.7 }),
       );
       rotor.position.set(x, 0.14, z);
       this.rotors.push(rotor);

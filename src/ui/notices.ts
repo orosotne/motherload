@@ -13,6 +13,7 @@ function itemName(item: keyof typeof ITEMS): string {
 
 /** Turns game events into short messages for the player. */
 export function showNotices(events: EventBus<GameEvents>, toasts: Toasts): void {
+  window.addEventListener('gamepadconnected', () => toasts.show(t('hud.padConnected'), 'info'));
   events.on('MineralCollected', ({ mineral, value }) => {
     const config = mineralById(mineral);
     const name = config ? t(config.key as TextKey) : '';

@@ -116,7 +116,7 @@ function trackZone(state: GameState, events: EventBus<GameEvents>): void {
 
 const SLOT_ACTIONS: readonly Action[] = ['slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
 
-/** Equipment keys (§5): 1 to 5 pick a slot, "use" fires the item. */
+/** Equipment keys (§5): 1 to 5 pick a slot, L and R step through them, "use" fires the item. */
 function handleEquipment(
   state: GameState,
   input: InputFrame,
@@ -126,6 +126,10 @@ function handleEquipment(
   SLOT_ACTIONS.forEach((action, slot) => {
     if (input.pressed[action]) selectSlot(state, slot, events);
   });
+  // L and R on a gamepad step through the slots (§5).
+  const count = state.slots.length;
+  if (input.pressed.slotNext) selectSlot(state, (state.selectedSlot + 1) % count, events);
+  if (input.pressed.slotPrev) selectSlot(state, (state.selectedSlot + count - 1) % count, events);
   if (input.pressed.use) useSelected(state, settings.pod.halfSize, events);
 }
 

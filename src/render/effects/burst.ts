@@ -1,4 +1,5 @@
 import { Mesh, MeshBasicMaterial, SphereGeometry } from 'three';
+import { BLOOM_LAYER } from '../toon';
 
 /** A quick expanding fireball, for a destroyed pod and explosions (F4 adds particles). */
 export class Burst {
@@ -13,6 +14,7 @@ export class Burst {
   ) {
     this.radius = defaultRadius;
     this.mesh = new Mesh(new SphereGeometry(1, 20, 14), this.material);
+    this.mesh.layers.enable(BLOOM_LAYER);
     this.mesh.visible = false;
   }
 

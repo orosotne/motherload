@@ -19,6 +19,24 @@ export interface FeelConfig {
     liftScaleX: number;
     liftMs: number;
   };
+  /**
+   * 4. Drill life: the pod shakes while drilling, debris flies in the block's colour and the
+   * drill's pitch rises with hardness.
+   */
+  drillLife: {
+    enabled: boolean;
+    /** Shake of the pod in blocks. */
+    shake: number;
+    /** Debris pieces per second while drilling. */
+    debrisPerSecond: number;
+    /** Drill pitch in Hz at hardness 1, and how much each point of hardness adds. */
+    pitchBase: number;
+    pitchPerHardness: number;
+  };
+  /** 5. Hitstop and a flash for valuable minerals; the chime rises with the value. */
+  hitstop: { enabled: boolean; ms: number; minValue: number };
+  /** 6. "+$150" flies from the block to the cargo readout in the HUD. */
+  popup: { enabled: boolean; ms: number };
   /** 7. Screen shake: strength = trauma², trauma decays linearly. */
   shake: {
     enabled: boolean;
@@ -48,11 +66,15 @@ export interface FeelConfig {
   };
   /** 10. Engine curve: thrust builds up and dies down instead of switching. */
   engine: { enabled: boolean; rampUpSeconds: number; rampDownSeconds: number };
+  /** 9. Rumble through the gamepad's vibrationActuator: soft while drilling, strong on blasts. */
+  rumble: { enabled: boolean; drill: number; explosion: number };
   /**
    * 11. Forgiveness: falls up to 3 blocks cost nothing, and letting go of the direction within
    * this time after a gas pocket starts hissing stops the drilling.
    */
   forgiveness: { enabled: boolean; gasAbortMs: number };
+  /** 12. Readability: dangerous blocks differ by shape and movement, not only by colour. */
+  readability: { enabled: boolean };
 }
 
 export const FEEL: Readonly<FeelConfig> = {
@@ -68,6 +90,16 @@ export const FEEL: Readonly<FeelConfig> = {
     liftScaleX: 0.92,
     liftMs: 100,
   },
+  drillLife: {
+    enabled: true,
+    shake: 0.035,
+    debrisPerSecond: 14,
+    pitchBase: 70,
+    pitchPerHardness: 28,
+  },
+  // $350 and up: the five most valuable minerals, as $900 was with the spec's prices (DECISIONS).
+  hitstop: { enabled: true, ms: 60, minValue: 350 },
+  popup: { enabled: true, ms: 650 },
   shake: {
     enabled: true,
     decayPerSecond: 1.5,
@@ -79,5 +111,7 @@ export const FEEL: Readonly<FeelConfig> = {
   },
   camera: { enabled: true, followRate: 8, lookahead: 3, fallLookahead: 5, climbLookahead: 1.5 },
   engine: { enabled: true, rampUpSeconds: 0.25, rampDownSeconds: 0.12 },
+  rumble: { enabled: true, drill: 0.12, explosion: 1 },
   forgiveness: { enabled: true, gasAbortMs: 300 },
+  readability: { enabled: true },
 };

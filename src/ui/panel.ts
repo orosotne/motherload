@@ -1,3 +1,4 @@
+import type { MenuCommand } from '../data/controls';
 import { t } from '../i18n';
 
 export interface PanelAction {
@@ -25,6 +26,8 @@ export interface PanelView {
   actions: PanelAction[];
   /** Cards in two columns instead of a list. */
   layout?: 'list' | 'grid';
+  /** Leave out the automatic Close button, when an action already closes the panel. */
+  noClose?: boolean;
   /** Feedback on the last action. */
   note?: string;
 }
@@ -65,7 +68,11 @@ export class PanelHost {
   private buttons: HTMLButtonElement[] = [];
   private focusIndex = 0;
 
-  constructor(private readonly parent: HTMLElement) {
+  constructor(
+    private readonly parent: HTMLElement,
+    /** A UI click (§8), played when a button is chosen or the focus moves. */
+    private readonly sound: () => void = () => undefined,
+  ) {
     window.addEventListener('keydown', (event) => this.onKey(event));
   }
 
@@ -103,7 +110,8 @@ export class PanelHost {
     if (view.body) body.append(view.body);
     const note = element('p', 'panel-note', view.note ?? '');
     const actions = element('div', `panel-actions${view.layout === 'grid' ? ' is-grid' : ''}`);
-    const all = [...view.actions, { label: t('panel.close'), run: () => this.close() }];
+    const close = { label: t('panel.close'), run: () => this.close() };
+    const all = view.noClose ? view.actions : [...view.actions, close];
     this.buttons = all.map((action, index) => this.button(action, index));
     actions.append(...this.buttons);
     body.append(note, actions, element('p', 'panel-hint', t('panel.closeHint')));
@@ -143,6 +151,7 @@ export class PanelHost {
     if (action.detail) button.append(element('small', '', action.detail));
     button.addEventListener('click', () => {
       this.focusIndex = index;
+      this.sound();
       action.run();
       this.refresh();
     });
@@ -197,6 +206,7 @@ export class PanelHost {
       return;
     }
     if (best < 0) best = this.wrap(direction);
+    if (best >= 0 && best !== this.focusIndex) this.sound();
     if (best >= 0) this.focus(best);
   }
 
@@ -205,6 +215,14 @@ export class PanelHost {
     const enabled = this.buttons.flatMap((button, index) => (button.disabled ? [] : [index]));
     const forward = direction === 'down' || direction === 'right';
     return (forward ? enabled[0] : enabled[enabled.length - 1]) ?? -1;
+  }
+
+  /** A menu command from the gamepad: D-pad moves, A chooses, B and Start close (§8). */
+  command(command: MenuCommand): void {
+    if (!this.isOpen) return;
+    if (command === 'confirm') this.buttons[this.focusIndex]?.click();
+    else if (command === 'back' || command === 'pause') this.close();
+    else this.move(command);
   }
 
   private onKey(event: KeyboardEvent): void {

@@ -1,8 +1,11 @@
+import { GameAudio } from './audio/gameAudio';
 import { EventBus } from './core/events';
 import { Input } from './core/input';
 import { GameLoop } from './core/loop';
 import type { BuildingId } from './data/buildings';
 import { Block } from './data/blocks';
+import { mineralById } from './data/minerals';
+import { money } from './i18n';
 import { WORLD } from './data/world';
 import { GameView } from './render/view';
 import { newGame, restore, serialize, settled } from './save/save';
@@ -17,6 +20,9 @@ import { HeatGlow } from './ui/heatGlow';
 import { Hud } from './ui/hud';
 import { showNotices } from './ui/notices';
 import { PanelHost } from './ui/panel';
+import { pauseView } from './ui/pauseMenu';
+import { Popups } from './ui/popups';
+import { Rumble } from './ui/rumble';
 import { shopView } from './ui/shops';
 import { Toasts } from './ui/toasts';
 
@@ -58,7 +64,15 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   const hud = new Hud(ui);
   const heatGlow = new HeatGlow(ui);
   const fade = new Fade(ui, events);
-  const panels = new PanelHost(ui);
+  const audio = new GameAudio(state, settings, events);
+  const panels = new PanelHost(ui, () => audio.sfx.click());
+  const rumble = new Rumble(input.pad, settings.feel, events);
+  const popups = new Popups(
+    ui,
+    settings.feel,
+    (x, y) => view.project(x, y),
+    () => hud.cargoRect(),
+  );
   showNotices(events, new Toasts(ui));
   let debug: DebugTools | null = null;
 
@@ -76,23 +90,38 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     if (document.visibilityState === 'hidden') save();
   });
 
+  const afterPanel = (): void => {
+    // The key that closes the panel must not count as a game press afterwards.
+    input.clearPresses();
+    save();
+  };
+  const openPause = (): void =>
+    panels.open(() => pauseView(audio.engine, () => panels.close()), afterPanel);
   const openShop = (id: BuildingId): void => {
     const note = { text: '' };
-    panels.open(
-      () => shopView(id, { state, events, note }),
-      () => {
-        // The key that closes the panel must not count as a game press afterwards.
-        input.clearPresses();
-        save();
-      },
-    );
+    panels.open(() => shopView(id, { state, events, note }), afterPanel);
   };
 
-  const loop = new GameLoop({
+  // A valuable mineral (§5.5) holds the game still for a moment; every one flies to the HUD (§5.6).
+  events.on('MineralCollected', ({ mineral, value, col, row }) => {
+    const { hitstop } = settings.feel;
+    if (hitstop.enabled && value >= hitstop.minValue) loop.freeze(hitstop.ms);
+    popups.show(`+${money(value)}`, col, -row, mineralById(mineral)?.color ?? '#ffffff');
+  });
+
+  const loop: GameLoop = new GameLoop({
     update: (dt) => {
       const frame = input.sample();
-      // Shops pause the game (§3: every trip ends with a decision what to buy).
-      if (panels.isOpen) return;
+      const commands = input.takeMenuCommands();
+      // Shops and the pause menu stop the game (§3: every trip ends with a decision what to buy).
+      if (panels.isOpen) {
+        for (const command of commands) panels.command(command);
+        return;
+      }
+      if (frame.pressed.pause) {
+        openPause();
+        return;
+      }
       const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
       if (frame.pressed.enter && building) {
         openShop(building.id);
@@ -107,7 +136,9 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     },
     render: (alpha, frameSeconds) => {
       const renderStart = performance.now();
-      view.render(alpha, frameSeconds);
+      view.render(alpha, frameSeconds, panels.isOpen);
+      audio.update(panels.isOpen);
+      rumble.update(state, frameSeconds, panels.isOpen);
       hud.update(state);
       heatGlow.update(state);
       fade.update(state, frameSeconds);
@@ -127,6 +158,7 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         renderInfo: view.renderer.info,
         settings,
         state,
+        view,
         resetPod: () => {
           state.pod = createPod(WORLD.spawnCol, -1, settings.pod.halfSize);
           view.snapCamera();

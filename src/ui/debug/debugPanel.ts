@@ -3,6 +3,7 @@ import type { GameLoop } from '../../core/loop';
 import { UPGRADE_BRANCHES } from '../../data/upgrades';
 import { WORLD } from '../../data/world';
 import type { CameraRig } from '../../render/camera';
+import type { GameView } from '../../render/view';
 import type { GameState, SimSettings } from '../../sim/game';
 import { statsFor } from '../../sim/stats';
 import { maxTier } from '../../sim/upgrades';
@@ -18,6 +19,8 @@ export interface DebugTargets {
   settings: SimSettings;
   /** The live game, for money and upgrades. */
   state: GameState;
+  /** The view, for the chunk borders. */
+  view: GameView;
   /** Puts the pod back on the surface. */
   resetPod: () => void;
   /** Puts the pod into a row, clearing that cell (§9.9: teleport to a depth). */
@@ -85,6 +88,7 @@ export function createDebugTools(targets: DebugTargets): DebugTools {
   game.add(jump, 'row', 0, WORLD.height - 1, 1).name('teleport row');
   game.add({ go: () => targets.teleport(jump.row) }, 'go').name('teleport');
   game.add({ fresh: targets.newGame }, 'fresh').name('new game (deletes the save)');
+  game.add(targets.view, 'chunkBorders').name('chunk borders');
   game.close();
 
   const pod = gui.addFolder('Pod');

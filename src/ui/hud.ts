@@ -117,6 +117,11 @@ export class Hud {
     if (building) this.write(this.promptText, t(building.key as TextKey));
   }
 
+  /** Where the cargo readout sits on screen: mineral popups fly there (§5.6). */
+  cargoRect(): DOMRect {
+    return this.cargo.root.getBoundingClientRect();
+  }
+
   /** Shown from the first overheating on, or once the pod has been to zone 4 (§3). */
   private updateHeat(state: GameState): void {
     this.heat.root.hidden = state.heat <= 0 && state.deepestZone < 4;

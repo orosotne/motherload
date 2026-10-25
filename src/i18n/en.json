@@ -117,5 +117,16 @@
   "relic.7": "Choir Stone",
   "relic.8": "Hearth Key",
   "relic.9": "The Last Letter",
-  "relic.10": "Spark of the Heart"
+  "relic.10": "Spark of the Heart",
+  "pause.title": "Paused",
+  "pause.line": "Take a breather. The rock will wait.",
+  "pause.continue": "Continue",
+  "pause.master": "Volume",
+  "pause.music": "Music",
+  "pause.sfx": "Sound effects",
+  "pause.language": "Language",
+  "pause.languageName": "English",
+  "pause.keys": "Keys: A D / arrows drive and drill, W or space flies, S drills down, E enters, 1–5 and F use equipment, Esc pauses.",
+  "pause.pad": "Gamepad: stick or D-pad drives and drills, A flies, X uses, Y enters, L R pick a slot, Start pauses.",
+  "hud.padConnected": "Gamepad connected"
 }
