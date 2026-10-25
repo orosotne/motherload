@@ -19,7 +19,8 @@
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "sim:economy": "vite build --ssr scripts/simEconomy.ts --outDir node_modules/.cache/sim-economy --emptyOutDir --logLevel warn && node node_modules/.cache/sim-economy/simEconomy.js",
-    "playtest": "vite build --ssr scripts/playtest.ts --outDir node_modules/.cache/playtest --emptyOutDir --logLevel warn && node node_modules/.cache/playtest/playtest.js"
+    "playtest": "vite build --ssr scripts/playtest.ts --outDir node_modules/.cache/playtest --emptyOutDir --logLevel warn && node node_modules/.cache/playtest/playtest.js",
+    "pack:web": "npm run build && vite build --ssr scripts/packWeb.ts --outDir node_modules/.cache/pack-web --emptyOutDir --logLevel warn && node node_modules/.cache/pack-web/packWeb.js"
   },
   "dependencies": {
     "lil-gui": "^0.21.0",
