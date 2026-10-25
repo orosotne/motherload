@@ -25,6 +25,14 @@ export function refuelQuote(state: GameState): { liters: number; cost: number } 
   return { liters, cost: Math.ceil(liters * ECONOMY.fuelPricePerLiter) };
 }
 
+/** Litres the cash can pay for now, and whether Pip would give the emergency fuel instead. */
+export function refuelOffer(state: GameState): { affordable: number; free: boolean } {
+  const missing = refuelQuote(state).liters;
+  const affordable = Math.min(missing, state.cash / ECONOMY.fuelPricePerLiter);
+  const emergency = Math.min(ECONOMY.emergencyFuelLiters, state.stats.tankLiters);
+  return { affordable, free: missing > 0 && state.fuel + affordable < emergency };
+}
+
 /**
  * Fills the tank as far as the cash goes. A pilot who cannot even pay for the emergency amount
  * gets it from Pip for free, so a run can always start (pillar 4).
@@ -33,19 +41,17 @@ export function refuel(
   state: GameState,
   events: EventBus<GameEvents>,
 ): { liters: number; cost: number; free: boolean } {
-  const quote = refuelQuote(state);
-  if (quote.liters <= 0) return { liters: 0, cost: 0, free: false };
+  const { affordable, free } = refuelOffer(state);
+  if (!free && affordable <= 0) return { liters: 0, cost: 0, free: false };
   const price = ECONOMY.fuelPricePerLiter;
   const emergency = Math.min(ECONOMY.emergencyFuelLiters, state.stats.tankLiters);
-  const affordable = Math.min(quote.liters, state.cash / price);
-
-  let result: { liters: number; cost: number; free: boolean };
-  if (state.fuel + affordable < emergency) {
-    result = { liters: emergency - state.fuel, cost: 0, free: true };
-  } else {
-    const liters = affordable;
-    result = { liters, cost: Math.min(Math.ceil(liters * price), state.cash), free: false };
-  }
+  const result = free
+    ? { liters: emergency - state.fuel, cost: 0, free: true }
+    : {
+        liters: affordable,
+        cost: Math.min(Math.ceil(affordable * price), state.cash),
+        free: false,
+      };
   state.fuel += result.liters;
   state.cash -= result.cost;
   events.emit('Refueled', result);

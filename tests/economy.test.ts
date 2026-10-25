@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EventBus } from '../src/core/events';
 import { BUILDINGS } from '../src/data/buildings';
 import { buildingAt, depthMeters } from '../src/sim/buildings';
-import { refuel, repair, sellAll } from '../src/sim/economy';
+import { refuel, refuelOffer, repair, sellAll } from '../src/sim/economy';
 import type { GameEvents } from '../src/sim/events';
 import { createGame, defaultSettings, type GameState } from '../src/sim/game';
 import { createPod } from '../src/sim/pod';
@@ -59,6 +59,15 @@ describe('fuel station ($2 per litre)', () => {
     state.cash = 3;
     expect(refuel(state, events)).toEqual({ liters: 4, cost: 0, free: true });
     expect([state.fuel, state.cash]).toEqual([4, 3]);
+  });
+
+  it('sells nothing to a broke pilot who still has more than the emergency fuel', () => {
+    const { state, events, log } = game();
+    state.fuel = 11;
+    state.cash = 0;
+    expect(refuelOffer(state)).toEqual({ affordable: 0, free: false });
+    expect(refuel(state, events)).toEqual({ liters: 0, cost: 0, free: false });
+    expect(log).toEqual([]);
   });
 
   it('does nothing with a full tank', () => {
