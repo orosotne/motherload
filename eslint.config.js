@@ -53,7 +53,7 @@ export default defineConfig([
     },
   },
   {
-    files: [...LOGIC, 'tests/**'],
+    files: [...LOGIC, 'tests/**', 'scripts/**'],
     rules: {
       'no-restricted-properties': [
         'error',

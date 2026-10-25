@@ -102,10 +102,19 @@ describe('fuel (§3)', () => {
 });
 
 describe('zones', () => {
-  it('announces entering a new zone', () => {
+  it('announces entering a zone, and whether it is the first time', () => {
     const sim = new Sim(gridFrom(Array<string>(60).fill('###')), 1, 0);
     sim.state.pod = createPod(1, 50, 0.4);
     sim.hold([], 1);
-    expect(sim.events('ZoneEntered')[0]?.payload).toEqual({ zone: 2 });
+    sim.state.pod = createPod(1, 10, 0.4);
+    sim.hold([], 1);
+    sim.state.pod = createPod(1, 51, 0.4);
+    sim.hold([], 1);
+    expect(sim.events('ZoneEntered').map((entry) => entry.payload)).toEqual([
+      { zone: 2, first: true },
+      { zone: 1, first: false },
+      { zone: 2, first: false },
+    ]);
+    expect(sim.state.deepestZone).toBe(2);
   });
 });

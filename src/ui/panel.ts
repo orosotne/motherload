@@ -4,6 +4,12 @@ export interface PanelAction {
   label: string;
   /** Right-aligned detail, e.g. a price. */
   detail?: string;
+  /** Second line under the label, e.g. "now → after". */
+  sub?: string;
+  /** Small inline SVG drawn before the label; static markup from icons.ts only. */
+  icon?: string;
+  /** Tier dots: how many of how many are filled. */
+  pips?: { filled: number; total: number };
   disabled?: boolean;
   run: () => void;
 }
@@ -17,16 +23,40 @@ export interface PanelView {
   /** Optional content between the line and the actions. */
   body?: HTMLElement;
   actions: PanelAction[];
+  /** Cards in two columns instead of a list. */
+  layout?: 'list' | 'grid';
   /** Feedback on the last action. */
   note?: string;
 }
 
-const NEXT = new Set(['ArrowDown', 'ArrowRight', 'KeyS', 'KeyD']);
-const PREVIOUS = new Set(['ArrowUp', 'ArrowLeft', 'KeyW', 'KeyA']);
+type Direction = 'up' | 'down' | 'left' | 'right';
+
+const DIRECTIONS: Readonly<Record<string, Direction>> = {
+  ArrowUp: 'up',
+  KeyW: 'up',
+  ArrowDown: 'down',
+  KeyS: 'down',
+  ArrowLeft: 'left',
+  KeyA: 'left',
+  ArrowRight: 'right',
+  KeyD: 'right',
+};
+
+function element<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
 /**
- * Modal panel for the shops (GAME_SPEC §8): big buttons, focus moved with the arrows or WASD,
- * Enter or Space to choose, Esc or E to close. The caller pauses the game while it is open.
+ * Modal panel for the shops (GAME_SPEC §8): big cards, focus moved with the arrows or WASD
+ * to the nearest card in that direction (a D-pad does the same in F4), Enter or Space to choose,
+ * Esc or E to close. The caller pauses the game while it is open.
  */
 export class PanelHost {
   private backdrop: HTMLElement | null = null;
@@ -48,8 +78,7 @@ export class PanelHost {
     this.render = render;
     this.onClose = onClose;
     this.focusIndex = 0;
-    const backdrop = document.createElement('div');
-    backdrop.className = 'panel-backdrop';
+    const backdrop = element('div', 'panel-backdrop');
     backdrop.addEventListener('pointerdown', (event) => {
       if (event.target === backdrop) this.close();
     });
@@ -62,36 +91,22 @@ export class PanelHost {
   refresh(): void {
     if (!this.backdrop || !this.render) return;
     const view = this.render();
-    const panel = document.createElement('section');
-    panel.className = 'panel';
+    const panel = element('section', 'panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
 
-    const head = document.createElement('header');
-    head.className = 'panel-head';
+    const head = element('header', 'panel-head');
     head.style.background = view.color;
-    const title = document.createElement('h2');
-    title.textContent = view.title;
-    const line = document.createElement('p');
-    line.className = 'panel-line';
-    line.textContent = view.line;
-    head.append(title, line);
+    head.append(element('h2', '', view.title), element('p', 'panel-line', view.line));
 
-    const body = document.createElement('div');
-    body.className = 'panel-body';
+    const body = element('div', 'panel-body');
     if (view.body) body.append(view.body);
-    const note = document.createElement('p');
-    note.className = 'panel-note';
-    note.textContent = view.note ?? '';
-    const actions = document.createElement('div');
-    actions.className = 'panel-actions';
+    const note = element('p', 'panel-note', view.note ?? '');
+    const actions = element('div', `panel-actions${view.layout === 'grid' ? ' is-grid' : ''}`);
     const all = [...view.actions, { label: t('panel.close'), run: () => this.close() }];
     this.buttons = all.map((action, index) => this.button(action, index));
     actions.append(...this.buttons);
-    const hint = document.createElement('p');
-    hint.className = 'panel-hint';
-    hint.textContent = t('panel.closeHint');
-    body.append(note, actions, hint);
+    body.append(note, actions, element('p', 'panel-hint', t('panel.closeHint')));
 
     panel.append(head, body);
     this.backdrop.replaceChildren(panel);
@@ -109,24 +124,36 @@ export class PanelHost {
   }
 
   private button(action: PanelAction, index: number): HTMLButtonElement {
-    const button = document.createElement('button');
+    const button = element('button', 'panel-action');
     button.type = 'button';
-    button.className = 'panel-action';
     button.disabled = !!action.disabled;
-    const label = document.createElement('span');
-    label.textContent = action.label;
-    button.append(label);
-    if (action.detail) {
-      const detail = document.createElement('small');
-      detail.textContent = action.detail;
-      button.append(detail);
+    const main = element('span', 'panel-action-main');
+    if (action.icon) {
+      const icon = element('span', 'panel-icon');
+      // Static SVG from icons.ts, never text from the game or the player.
+      icon.innerHTML = action.icon;
+      main.append(icon);
     }
+    const text = element('span', 'panel-action-text');
+    text.append(element('span', 'panel-action-label', action.label));
+    if (action.pips) text.append(this.pips(action.pips));
+    if (action.sub) text.append(element('span', 'panel-action-sub', action.sub));
+    main.append(text);
+    button.append(main);
+    if (action.detail) button.append(element('small', '', action.detail));
     button.addEventListener('click', () => {
       this.focusIndex = index;
       action.run();
       this.refresh();
     });
     return button;
+  }
+
+  private pips({ filled, total }: { filled: number; total: number }): HTMLElement {
+    const row = element('span', 'panel-pips');
+    row.setAttribute('aria-label', `${filled} / ${total}`);
+    for (let i = 0; i < total; i++) row.append(element('i', i < filled ? 'is-on' : ''));
+    return row;
   }
 
   private focus(index: number): void {
@@ -137,24 +164,54 @@ export class PanelHost {
       button.classList.toggle('is-focused', i === this.focusIndex),
     );
     target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'nearest' });
   }
 
-  private move(step: 1 | -1): void {
-    const count = this.buttons.length;
-    for (let i = 1; i <= count; i++) {
-      const index = (this.focusIndex + step * i + count) % count;
-      if (!this.buttons[index]?.disabled) {
-        this.focus(index);
-        return;
+  /** Moves the focus to the nearest enabled button in a direction, wrapping in lists. */
+  private move(direction: Direction): void {
+    const from = this.buttons[this.focusIndex]?.getBoundingClientRect();
+    if (!from) return;
+    const centre = (rect: DOMRect): [number, number] => [
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+    ];
+    const [fx, fy] = centre(from);
+    let best = -1;
+    let bestScore = Infinity;
+    this.buttons.forEach((button, index) => {
+      if (button.disabled || index === this.focusIndex) return;
+      const [x, y] = centre(button.getBoundingClientRect());
+      const along = { up: fy - y, down: y - fy, left: fx - x, right: x - fx }[direction];
+      const across =
+        direction === 'up' || direction === 'down' ? Math.abs(x - fx) : Math.abs(y - fy);
+      if (along <= 1) return;
+      const score = along + across * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = index;
       }
+    });
+    // In a single column, left and right step through the list like up and down.
+    if (best < 0 && (direction === 'left' || direction === 'right')) {
+      this.move(direction === 'left' ? 'up' : 'down');
+      return;
     }
+    if (best < 0) best = this.wrap(direction);
+    if (best >= 0) this.focus(best);
+  }
+
+  /** Off the edge: up and left go to the last enabled button, down and right to the first. */
+  private wrap(direction: Direction): number {
+    const enabled = this.buttons.flatMap((button, index) => (button.disabled ? [] : [index]));
+    const forward = direction === 'down' || direction === 'right';
+    return (forward ? enabled[0] : enabled[enabled.length - 1]) ?? -1;
   }
 
   private onKey(event: KeyboardEvent): void {
     if (!this.isOpen || event.repeat) return;
+    const direction = DIRECTIONS[event.code];
     if (event.code === 'Escape' || event.code === 'KeyE') this.close();
-    else if (NEXT.has(event.code)) this.move(1);
-    else if (PREVIOUS.has(event.code)) this.move(-1);
+    else if (direction) this.move(direction);
     else if (event.code === 'Enter' || event.code === 'Space')
       this.buttons[this.focusIndex]?.click();
     else return;

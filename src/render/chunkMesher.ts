@@ -21,11 +21,19 @@ export interface BlockLook {
 /** Decides the look of a cell; `row` matters because colours follow the zone (§8). */
 export type BlockLooks = (block: BlockId, row: number) => BlockLook | null;
 
-/** A mineral crystal sticking out of an ore block's face (§6: own shape and colour). */
-export interface CrystalLook {
+/**
+ * Something sitting in a block's front face: a mineral crystal (§6: own shape and colour), the
+ * bubbles of a gas pocket or a relic's emblem. `key` groups equal looks into one mesh.
+ */
+export interface DecorLook {
+  key: number;
   geometry: BufferGeometry;
   material: Material;
+  /** Turned at random per cell, like crystals; otherwise facing the camera. */
+  turn: boolean;
 }
+
+export type DecorLooks = (block: BlockId, mineral: number) => DecorLook | null;
 
 /** Chunks within this many chunk rows of the camera are drawn (GAME_SPEC §9.7). */
 const VISIBLE_CHUNK_ROWS = 2;
@@ -53,7 +61,7 @@ class ChunkView {
 
 /**
  * Draws the grid chunk by chunk (GAME_SPEC §4, §9.6): per chunk one InstancedMesh per material
- * and one per mineral crystal, rebuilt only when that chunk changed; only chunks near the camera
+ * and one per decoration (crystals, bubbles, emblems), rebuilt only when that chunk changed; only chunks near the camera
  * are shown.
  */
 export class ChunkRenderer {
@@ -70,7 +78,7 @@ export class ChunkRenderer {
   constructor(
     private readonly grid: Grid,
     private readonly looks: BlockLooks,
-    private readonly crystals: (mineral: number) => CrystalLook | null,
+    private readonly decor: DecorLooks,
   ) {
     // Same order as Grid.chunkIndex: rows outside, columns inside.
     for (let row = 0; row < grid.chunkRows; row++) {
@@ -102,9 +110,8 @@ export class ChunkRenderer {
         const block = this.grid.get(col, row);
         const look = this.looks(block, row);
         if (look) this.addCube(chunk, look, col, row);
-        const mineral = this.grid.mineral(col, row);
-        const crystal = mineral > 0 ? this.crystals(mineral) : null;
-        if (crystal) this.addCrystal(chunk, mineral, crystal, col, row);
+        const decor = this.decor(block, this.grid.mineral(col, row));
+        if (decor) this.addDecor(chunk, decor, col, row);
       }
     }
     for (const mesh of chunk.meshes.values()) {
@@ -121,17 +128,15 @@ export class ChunkRenderer {
     mesh.setColorAt(index, this.shade.copy(look.color).multiplyScalar(shade));
   }
 
-  private addCrystal(
-    chunk: ChunkView,
-    mineral: number,
-    crystal: CrystalLook,
-    col: number,
-    row: number,
-  ): void {
-    const mesh = this.meshFor(chunk, mineral, crystal.geometry, crystal.material);
+  private addDecor(chunk: ChunkView, decor: DecorLook, col: number, row: number): void {
+    const mesh = this.meshFor(chunk, decor.key, decor.geometry, decor.material);
     const index = mesh.count++;
-    const turn = cellHash(col, row, 7) * Math.PI * 2;
-    this.euler.set(0.4, turn, 0.3 * (cellHash(col, row, 3) - 0.5));
+    if (decor.turn) {
+      const turn = cellHash(col, row, 7) * Math.PI * 2;
+      this.euler.set(0.4, turn, 0.3 * (cellHash(col, row, 3) - 0.5));
+    } else {
+      this.euler.set(0, 0, 0);
+    }
     // Half sunk into the block's front face, so it reads as embedded ore.
     this.position.set(col, -row, 0.5);
     this.matrix.compose(this.position, this.rotation.setFromEuler(this.euler), this.scale);

@@ -12,7 +12,7 @@ import { ChunkRenderer } from './chunkMesher';
 import { DroneView, rescueProgress, towLift } from './droneView';
 import { Burst } from './effects/burst';
 import { landingTrauma, Shake } from './effects/shake';
-import { createBlockLooks, createCrystalLooks } from './materials';
+import { createBlockLooks, createDecorLooks } from './materials';
 import { PodView } from './podView';
 import { bindResize, createRenderer } from './renderer';
 import { createScene } from './scene';
@@ -33,6 +33,7 @@ export class GameView {
   private readonly pod: PodView;
   private readonly drone = new DroneView();
   private readonly burst = new Burst();
+  private readonly blast = new Burst(0.45);
   private readonly shake = new Shake();
   private cameraX: number;
   private cameraY: number;
@@ -47,7 +48,7 @@ export class GameView {
     this.scene = createScene();
     bindResize(this.renderer, (width, height) => this.rig.setAspect(width / height));
 
-    this.chunks = new ChunkRenderer(state.grid, createBlockLooks(), createCrystalLooks());
+    this.chunks = new ChunkRenderer(state.grid, createBlockLooks(), createDecorLooks());
     this.pod = new PodView(settings.pod.halfSize);
     this.scene.add(
       this.chunks.group,
@@ -56,6 +57,7 @@ export class GameView {
       this.pod.root,
       this.drone.root,
       this.burst.mesh,
+      this.blast.mesh,
     );
     this.cameraX = state.pod.x;
     this.cameraY = state.pod.y;
@@ -69,8 +71,13 @@ export class GameView {
       this.burst.start(this.state.pod.x, this.state.pod.y);
       this.shake.add(0.8);
     });
+    events.on('Explosion', ({ col, row, radius, source }) => {
+      this.blast.start(col, -row, radius + 0.8);
+      this.shake.add(source === 'gas' ? 0.55 : 0.35 + radius * 0.2);
+    });
     events.on('Rescued', () => this.snapCamera());
     events.on('Respawned', () => this.snapCamera());
+    events.on('Teleported', () => this.snapCamera());
   }
 
   /** Jumps the camera to the pod, e.g. after a teleport. */
@@ -93,6 +100,7 @@ export class GameView {
     const podY = pod.prevY + (pod.y - pod.prevY) * alpha + lift;
     this.drone.update(progress, podX, podY, frameSeconds);
     this.burst.update(frameSeconds);
+    this.blast.update(frameSeconds);
     this.updateCamera(alpha, frameSeconds, lift);
     this.chunks.update(rowOf(this.cameraY));
     this.renderer.render(this.scene, this.rig.camera);

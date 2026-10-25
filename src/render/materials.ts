@@ -1,4 +1,5 @@
 import {
+  BoxGeometry,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -8,13 +9,14 @@ import {
   OctahedronGeometry,
   SphereGeometry,
   TetrahedronGeometry,
-  BoxGeometry,
+  TorusGeometry,
   type BufferGeometry,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Block, type BlockId } from '../data/blocks';
 import { MINERALS, type CrystalShape } from '../data/minerals';
 import { ZONES, zoneAt } from '../data/zones';
-import type { BlockLooks, CrystalLook } from './chunkMesher';
+import type { BlockLooks, DecorLook, DecorLooks } from './chunkMesher';
 
 /**
  * Block colours per zone (§8). The palette's darkest colour of zones 3–5 is the rock itself;
@@ -35,10 +37,24 @@ export function backWallColor(zoneIndex: number): Color {
   return new Color(darkest ?? '#222').multiplyScalar(0.55);
 }
 
-/** Looks of all cube blocks: zone-coloured rock, steel-grey corestone (§4, §8). */
+/**
+ * Looks of all cube blocks: zone-coloured rock (gas pockets and relics hide in it), steel-grey
+ * corestone and glowing lava (§4, §8).
+ */
 export function createBlockLooks(): BlockLooks {
   const rock = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.92 });
   const corestone = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.35, metalness: 0.7 });
+  // See-through enough that a pod sinking in it stays visible.
+  const lava = new MeshStandardMaterial({
+    color: '#ffffff',
+    emissive: '#FF5A14',
+    emissiveIntensity: 0.85,
+    roughness: 0.55,
+    transparent: true,
+    opacity: 0.72,
+    depthWrite: false,
+  });
+  const lavaColor = new Color('#FFB347');
   const rockColors = new Map<number, Color>();
   for (const zone of ZONES) {
     rockColors.set(zone.index, new Color(ROCK_COLORS[zone.index] ?? '#888'));
@@ -57,6 +73,7 @@ export function createBlockLooks(): BlockLooks {
   ]);
   return (block, row) => {
     if (block === Block.Corestone) return { material: corestone, color: corestoneColor };
+    if (block === Block.Lava) return { material: lava, color: lavaColor };
     if (!drawn.has(block)) return null;
     const color = rockColors.get(zoneAt(row).index);
     return color ? { material: rock, color } : null;
@@ -86,12 +103,29 @@ function crystalGeometry(shape: CrystalShape): BufferGeometry {
   }
 }
 
-/** One crystal per mineral: its own shape and colour, glowing softly in the dark (§3, §6). */
-export function createCrystalLooks(): (mineral: number) => CrystalLook | null {
-  const looks = new Map<number, CrystalLook>();
+/** Three small bubbles in a gas pocket's face: almost plain rock, but not quite (§4). */
+function bubbleGeometry(): BufferGeometry {
+  const bubbles = [
+    [-0.18, 0.12, 0.07],
+    [0.14, -0.06, 0.055],
+    [0.02, 0.2, 0.045],
+  ].map(([x = 0, y = 0, r = 0.05]) => new SphereGeometry(r, 10, 8).translate(x, y, 0));
+  return mergeGeometries(bubbles) ?? new SphereGeometry(0.06);
+}
+
+const DECOR_GAS = 100;
+const DECOR_RELIC = 101;
+
+/**
+ * Decorations in block faces: one crystal per mineral with its own shape and colour, glowing
+ * softly in the dark (§3, §6); bubbles on gas pockets; a gold emblem on relics.
+ */
+export function createDecorLooks(): DecorLooks {
+  const crystals = new Map<number, DecorLook>();
   for (const mineral of MINERALS) {
     const color = new Color(mineral.color);
-    looks.set(mineral.id, {
+    crystals.set(mineral.id, {
+      key: mineral.id,
       geometry: crystalGeometry(mineral.shape),
       material: new MeshStandardMaterial({
         color,
@@ -100,7 +134,36 @@ export function createCrystalLooks(): (mineral: number) => CrystalLook | null {
         roughness: 0.25,
         metalness: 0.1,
       }),
+      turn: true,
     });
   }
-  return (mineral) => looks.get(mineral) ?? null;
+  const gas: DecorLook = {
+    key: DECOR_GAS,
+    geometry: bubbleGeometry(),
+    material: new MeshStandardMaterial({
+      color: '#E6F7B0',
+      transparent: true,
+      opacity: 0.6,
+      roughness: 0.15,
+    }),
+    turn: false,
+  };
+  const relic: DecorLook = {
+    key: DECOR_RELIC,
+    geometry: new TorusGeometry(0.2, 0.065, 10, 24),
+    material: new MeshStandardMaterial({
+      color: '#FFD166',
+      emissive: '#FFB703',
+      emissiveIntensity: 0.6,
+      metalness: 0.5,
+      roughness: 0.3,
+    }),
+    turn: false,
+  };
+  return (block, mineral) => {
+    if (block === Block.Ore) return crystals.get(mineral) ?? null;
+    if (block === Block.Gas) return gas;
+    if (block === Block.Relic) return relic;
+    return null;
+  };
 }

@@ -36,7 +36,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 2,
     key: 'mineral.cobaltine',
-    value: 60,
+    value: 50,
     zones: [1, 2, 3],
     mainZone: 2,
     density: 0.05,
@@ -46,7 +46,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 3,
     key: 'mineral.glimmerite',
-    value: 150,
+    value: 90,
     zones: [2, 3],
     mainZone: 2,
     density: 0.04,
@@ -56,7 +56,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 4,
     key: 'mineral.aurelite',
-    value: 400,
+    value: 200,
     zones: [2, 3, 4],
     mainZone: 3,
     density: 0.03,
@@ -66,7 +66,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 5,
     key: 'mineral.skyquartz',
-    value: 900,
+    value: 350,
     zones: [3, 4],
     mainZone: 3,
     density: 0.025,
@@ -76,7 +76,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 6,
     key: 'mineral.emberstone',
-    value: 2000,
+    value: 600,
     zones: [4, 5],
     mainZone: 4,
     density: 0.02,
@@ -86,7 +86,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 7,
     key: 'mineral.voidglass',
-    value: 5000,
+    value: 1200,
     zones: [4, 5],
     mainZone: 4,
     density: 0.012,
@@ -96,7 +96,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 8,
     key: 'mineral.starheart',
-    value: 12000,
+    value: 2500,
     zones: [5],
     mainZone: 5,
     density: 0.008,
@@ -106,7 +106,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 9,
     key: 'mineral.corePearl',
-    value: 30000,
+    value: 5000,
     zones: [5],
     mainZone: 5,
     density: 0.003,

@@ -1,8 +1,10 @@
 import { FUEL } from '../data/economy';
+import { HEAT } from '../data/hazards';
 import { decimal, money, onLanguageChange, t, type TextKey } from '../i18n';
 import { buildingAt, depthMeters } from '../sim/buildings';
 import { cargoUnits } from '../sim/cargo';
 import type { GameState } from '../sim/game';
+import { slotRow } from './supply';
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -46,7 +48,11 @@ export class Hud {
   private readonly cargo: ReturnType<typeof stat>;
   private readonly depth: ReturnType<typeof stat>;
   private readonly zone: ReturnType<typeof stat>;
+  private readonly heat: Gauge;
   private readonly cash: HTMLElement;
+  private readonly relics: HTMLElement;
+  private readonly slots: HTMLElement;
+  private slotsShown = '';
   private readonly prompt: HTMLElement;
   private readonly promptText: HTMLElement;
   private readonly shown = new Map<HTMLElement, string>();
@@ -59,7 +65,11 @@ export class Hud {
     this.cargo = stat(stats);
     this.depth = stat(stats);
     this.zone = stat(stats);
-    this.cash = element('div', 'hud-cash', root);
+    this.heat = gauge(root, 'heat');
+    const wallet = element('div', 'hud-money', root);
+    this.cash = element('div', 'hud-cash', wallet);
+    this.relics = element('div', 'hud-relics', wallet);
+    this.slots = element('div', 'hud-slots', root);
 
     this.prompt = element('div', 'prompt', parent);
     const key = element('kbd', '', this.prompt);
@@ -96,10 +106,32 @@ export class Hud {
     this.write(this.depth.value, t('unit.meters', { value: depthMeters(state.pod) }));
     this.write(this.zone.value, String(state.zone));
     this.write(this.cash, money(state.cash));
+    const found = state.relics.filter(Boolean).length;
+    this.relics.hidden = found === 0;
+    this.write(this.relics, t('hud.relics', { count: found, total: state.relics.length }));
+    this.updateHeat(state);
+    this.updateSlots(state);
 
     const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
     this.prompt.hidden = !building;
     if (building) this.write(this.promptText, t(building.key as TextKey));
+  }
+
+  /** Shown from the first overheating on, or once the pod has been to zone 4 (§3). */
+  private updateHeat(state: GameState): void {
+    this.heat.root.hidden = state.heat <= 0 && state.deepestZone < 4;
+    this.write(this.heat.value, `${Math.round(state.heat * 100)} %`);
+    this.heat.fill.style.width = `${state.heat * 100}%`;
+    this.heat.root.classList.toggle('is-low', state.heat >= HEAT.warnLevel && state.heat < 1);
+    this.heat.root.classList.toggle('is-critical', state.heat >= 1);
+  }
+
+  /** Redraws the slot boxes only when an item, an anchor or the selection changed. */
+  private updateSlots(state: GameState): void {
+    const shown = JSON.stringify([state.slots, state.selectedSlot]);
+    if (shown === this.slotsShown) return;
+    this.slotsShown = shown;
+    this.slots.replaceChildren(slotRow(state));
   }
 
   /** Labels that only change with the language; values refresh on the next update. */
@@ -109,6 +141,8 @@ export class Hud {
     this.cargo.label.textContent = t('hud.cargo');
     this.depth.label.textContent = t('hud.depth');
     this.zone.label.textContent = t('hud.zone');
+    this.heat.label.textContent = t('hud.heat');
+    this.slotsShown = '';
   }
 
   private write(node: HTMLElement, text: string): void {

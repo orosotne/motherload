@@ -1,21 +1,24 @@
 import { Mesh, MeshBasicMaterial, SphereGeometry } from 'three';
 
-/** A quick expanding fireball, for a destroyed pod (F4 adds particles). */
+/** A quick expanding fireball, for a destroyed pod and explosions (F4 adds particles). */
 export class Burst {
   readonly mesh: Mesh;
   private readonly material = new MeshBasicMaterial({ color: '#FF9F43', transparent: true });
   private age = Infinity;
+  private radius: number;
 
   constructor(
     private readonly seconds = 0.55,
-    private readonly radius = 2.2,
+    private readonly defaultRadius = 2.2,
   ) {
+    this.radius = defaultRadius;
     this.mesh = new Mesh(new SphereGeometry(1, 20, 14), this.material);
     this.mesh.visible = false;
   }
 
-  start(x: number, y: number): void {
+  start(x: number, y: number, radius = this.defaultRadius): void {
     this.age = 0;
+    this.radius = radius;
     this.mesh.position.set(x, y, 0.3);
   }
 

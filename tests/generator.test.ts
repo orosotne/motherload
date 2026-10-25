@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { Block } from '../src/data/blocks';
 import { SOLID_TOP_ROWS, TOWN_COLUMNS } from '../src/data/generation';
 import { MINERALS } from '../src/data/minerals';
-import { ZONES } from '../src/data/zones';
+import { RELICS, relicRow } from '../src/data/relics';
+import { ZONES, zoneAt } from '../src/data/zones';
 import { generateWorld } from '../src/world/generator';
 import type { Grid } from '../src/world/grid';
-import { findPathToBottom } from '../src/world/pathCheck';
+import { findPathToBottom, reachableCells } from '../src/world/pathCheck';
 import { gridFrom } from './helpers/sim';
 
 function cells(grid: Grid): string {
@@ -31,7 +32,14 @@ describe('generateWorld', () => {
         for (let row = zone.firstRow; row <= zone.lastRow; row++) {
           for (let col = 0; col < grid.width; col++) {
             const block = grid.get(col, row);
-            const special = [Block.Empty, Block.Ore, Block.Corestone] as number[];
+            const special = [
+              Block.Empty,
+              Block.Ore,
+              Block.Corestone,
+              Block.Gas,
+              Block.Lava,
+              Block.Relic,
+            ] as number[];
             if (!special.includes(block)) expect(block).toBe(zone.base);
           }
         }
@@ -130,6 +138,39 @@ describe('generateWorld', () => {
     expect(found).toBeGreaterThan(0);
   });
 
+  it('hides gas pockets in zones 2 to 5 and lava only in zones 4 and 5', () => {
+    const zonesWith = (block: number): Set<number> => {
+      const zones = new Set<number>();
+      for (const grid of worlds) {
+        for (let row = 0; row < grid.height; row++) {
+          for (let col = 0; col < grid.width; col++) {
+            if (grid.get(col, row) === block) zones.add(zoneAt(row).index);
+          }
+        }
+      }
+      return zones;
+    };
+    expect([...zonesWith(Block.Gas)].sort()).toEqual([2, 3, 4, 5]);
+    expect([...zonesWith(Block.Lava)].sort()).toEqual([4, 5]);
+  });
+
+  it('places the ten relics at their depths, each where the pod can reach it', () => {
+    for (const grid of worlds) {
+      const reachable = reachableCells(grid);
+      const found: number[] = [];
+      for (let row = 0; row < grid.height; row++) {
+        for (let col = 0; col < grid.width; col++) {
+          if (grid.get(col, row) !== Block.Relic) continue;
+          found.push(row);
+          expect(reachable[row * grid.width + col]).toBe(1);
+          expect(col).toBeGreaterThanOrEqual(RELICS.edgeMargin);
+          expect(col).toBeLessThan(grid.width - RELICS.edgeMargin);
+        }
+      }
+      expect(found).toEqual(RELICS.depthsMeters.map((_, index) => relicRow(index)));
+    }
+  });
+
   it('always leaves a way from the surface to the bottom (anti-softlock, 100 seeds)', () => {
     for (let seed = 1; seed <= 100; seed++) {
       const path = findPathToBottom(generateWorld(seed));
@@ -150,6 +191,10 @@ describe('findPathToBottom', () => {
 
   it('goes around a barrier that leaves a gap', () => {
     expect(findPathToBottom(gridFrom(['###', 'XX#', '###'])).reachable).toBe(true);
+  });
+
+  it('never counts on crossing lava', () => {
+    expect(findPathToBottom(gridFrom(['###', 'LLL', '###'])).reachable).toBe(false);
   });
 
   it('drills sideways only while standing on something', () => {

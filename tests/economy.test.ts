@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EventBus } from '../src/core/events';
 import { BUILDINGS } from '../src/data/buildings';
+import { mineralById } from '../src/data/minerals';
 import { buildingAt, depthMeters } from '../src/sim/buildings';
 import { refuel, refuelOffer, repair, sellAll } from '../src/sim/economy';
 import type { GameEvents } from '../src/sim/events';
@@ -23,10 +24,11 @@ describe('selling (§6: 100 % of the value)', () => {
     const { state, events, log } = game();
     state.cargo[1] = 2;
     state.cargo[2] = 1;
-    expect(sellAll(state, events)).toEqual({ units: 3, value: 110 });
-    expect(state.cash).toBe(110);
+    const worth = 2 * (mineralById(1)?.value ?? 0) + (mineralById(2)?.value ?? 0);
+    expect(sellAll(state, events)).toEqual({ units: 3, value: worth });
+    expect(state.cash).toBe(worth);
     expect(state.cargo.every((units) => units === 0)).toBe(true);
-    expect(log).toEqual(['sold 110']);
+    expect(log).toEqual([`sold ${worth}`]);
   });
 
   it('does nothing with an empty hold', () => {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { mineralById } from '../src/data/minerals';
 import { cargoUnits, cargoValue, emptyCargo, loseHalfCargo } from '../src/sim/cargo';
 import { gridFrom, Sim } from './helpers/sim';
+
+const value = (id: number): number => mineralById(id)?.value ?? 0;
 
 describe('cargo (§3)', () => {
   it('takes ore on board as one unit and announces its value', () => {
@@ -25,7 +28,7 @@ describe('cargo (§3)', () => {
     cargo[1] = 2;
     cargo[2] = 1;
     expect(cargoUnits(cargo)).toBe(3);
-    expect(cargoValue(cargo)).toBe(110);
+    expect(cargoValue(cargo)).toBe(2 * value(1) + value(2));
   });
 
   it('loses every second unit in order of value, so about half the worth goes', () => {

@@ -1,7 +1,10 @@
 import type { EventBus } from '../core/events';
 import type { InputFrame } from '../core/input';
+import { Block } from '../data/blocks';
+import { ENGINE } from '../data/engine';
 import { hardnessAt, startDrill } from './drilling';
 import type { GameEvents } from './events';
+import { gasAbortSeconds } from './hazards';
 import type { GameState, SimSettings } from './game';
 import type { DrillDir } from './pod';
 import type { MotionControls } from './podMotion';
@@ -42,6 +45,10 @@ export function tryDrill(
   for (const dir of requestedDrills(state, input, windowSeconds)) {
     const drill = startDrill(state.pod, state.grid, dir, state.stats, settings.pod.halfSize, carry);
     if (!drill) continue;
+    const gas = state.grid.get(drill.col, drill.row) === Block.Gas;
+    // However fast the drill, a gas pocket never gives way before the time to let go is over.
+    if (gas)
+      drill.duration = Math.max(drill.duration, gasAbortSeconds(settings.feel) + 1 / ENGINE.simHz);
     events.emit('DrillStarted', {
       col: drill.col,
       row: drill.row,
@@ -49,6 +56,8 @@ export function tryDrill(
       seconds: drill.duration,
       hardness: hardnessAt(state.grid, drill.col, drill.row) ?? 0,
     });
+    // A gas pocket hisses as the drill bites (§5.11): letting go now stops it.
+    if (gas) events.emit('GasHiss', { col: drill.col, row: drill.row });
     return;
   }
 }
