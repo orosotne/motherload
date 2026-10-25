@@ -16,7 +16,7 @@ export interface WorldConfig {
 
 export const WORLD: Readonly<WorldConfig> = {
   width: 40,
-  height: 100,
+  height: 500,
   chunkSize: 20,
   metersPerBlock: 4,
   skyRows: 12,

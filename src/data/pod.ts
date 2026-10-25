@@ -34,7 +34,7 @@ export const POD: Readonly<PodConfig> = {
   groundAccel: 30,
   groundBrake: 40,
   airAccel: 18,
-  airBrake: 4,
+  airBrake: 10,
   thrustAccel: 46,
   brakeSpeed: 4,
 };

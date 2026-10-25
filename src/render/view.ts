@@ -7,9 +7,12 @@ import { rowOf } from '../sim/pod';
 import { createBackdrop } from './backdrop';
 import { CameraRig } from './camera';
 import { clampView, followTarget, smoothToward } from './cameraMath';
+import { createBuildings } from './buildingsView';
 import { ChunkRenderer } from './chunkMesher';
+import { DroneView, rescueProgress, towLift } from './droneView';
+import { Burst } from './effects/burst';
 import { landingTrauma, Shake } from './effects/shake';
-import { createGreyMaterials } from './materials';
+import { createBlockLooks, createCrystalLooks } from './materials';
 import { PodView } from './podView';
 import { bindResize, createRenderer } from './renderer';
 import { createScene } from './scene';
@@ -28,6 +31,8 @@ export class GameView {
   private readonly scene: Scene;
   private readonly chunks: ChunkRenderer;
   private readonly pod: PodView;
+  private readonly drone = new DroneView();
+  private readonly burst = new Burst();
   private readonly shake = new Shake();
   private cameraX: number;
   private cameraY: number;
@@ -42,9 +47,16 @@ export class GameView {
     this.scene = createScene();
     bindResize(this.renderer, (width, height) => this.rig.setAspect(width / height));
 
-    this.chunks = new ChunkRenderer(state.grid, createGreyMaterials());
+    this.chunks = new ChunkRenderer(state.grid, createBlockLooks(), createCrystalLooks());
     this.pod = new PodView(settings.pod.halfSize);
-    this.scene.add(this.chunks.group, createBackdrop(state.grid), this.pod.root);
+    this.scene.add(
+      this.chunks.group,
+      createBackdrop(state.grid),
+      createBuildings(),
+      this.pod.root,
+      this.drone.root,
+      this.burst.mesh,
+    );
     this.cameraX = state.pod.x;
     this.cameraY = state.pod.y;
 
@@ -53,6 +65,12 @@ export class GameView {
       const { squash } = this.settings.feel;
       this.pod.startPulse(squash.liftScaleX, squash.liftScaleY, squash.liftMs);
     });
+    events.on('Destroyed', () => {
+      this.burst.start(this.state.pod.x, this.state.pod.y);
+      this.shake.add(0.8);
+    });
+    events.on('Rescued', () => this.snapCamera());
+    events.on('Respawned', () => this.snapCamera());
   }
 
   /** Jumps the camera to the pod, e.g. after a teleport. */
@@ -63,8 +81,19 @@ export class GameView {
 
   render(alpha: number, frameSeconds: number): void {
     this.renderer.info.reset();
-    this.pod.update(this.state.pod, alpha, frameSeconds, this.settings.feel.squash.enabled);
-    this.updateCamera(alpha, frameSeconds);
+    const progress = rescueProgress(this.state);
+    const lift = towLift(progress);
+    const { pod } = this.state;
+    this.pod.update(pod, alpha, frameSeconds, {
+      pulses: this.settings.feel.squash.enabled,
+      hidden: this.state.status.kind === 'respawn',
+      lift,
+    });
+    const podX = pod.prevX + (pod.x - pod.prevX) * alpha;
+    const podY = pod.prevY + (pod.y - pod.prevY) * alpha + lift;
+    this.drone.update(progress, podX, podY, frameSeconds);
+    this.burst.update(frameSeconds);
+    this.updateCamera(alpha, frameSeconds, lift);
     this.chunks.update(rowOf(this.cameraY));
     this.renderer.render(this.scene, this.rig.camera);
   }
@@ -79,11 +108,11 @@ export class GameView {
   }
 
   /** Smooth follow with lookahead (§5.8), kept inside the world, plus screen shake (§5.7). */
-  private updateCamera(alpha: number, dt: number): void {
+  private updateCamera(alpha: number, dt: number, lift: number): void {
     const { pod, grid, stats } = this.state;
     const { camera, shake } = this.settings.feel;
     const x = pod.prevX + (pod.x - pod.prevX) * alpha;
-    const y = pod.prevY + (pod.y - pod.prevY) * alpha;
+    const y = pod.prevY + (pod.y - pod.prevY) * alpha + lift;
     if (camera.enabled) {
       // Velocity from the last tick's displacement also covers gliding while drilling.
       const velocity = {

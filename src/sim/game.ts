@@ -1,15 +1,22 @@
 import type { EventBus } from '../core/events';
 import type { InputFrame } from '../core/input';
+import { Block } from '../data/blocks';
 import { ACTIONS, type Action } from '../data/controls';
+import { ECONOMY, FUEL } from '../data/economy';
 import { FEEL, type FeelConfig } from '../data/feel';
 import { POD, type PodConfig } from '../data/pod';
 import { WORLD } from '../data/world';
+import { zoneAt } from '../data/zones';
 import type { Grid } from '../world/grid';
-import { advanceDrill, hardnessAt, startDrill } from './drilling';
+import { collectMineral, emptyCargo, type Cargo } from './cargo';
+import { bufferSeconds, IDLE_CONTROLS, motionControls, tryDrill } from './control';
+import { advanceDrill } from './drilling';
 import type { GameEvents } from './events';
-import { createPod, type DrillDir, type Pod } from './pod';
-import { stepMotion, type MotionControls } from './podMotion';
-import { startTiers, statsFor, type PodStats } from './stats';
+import { burnFuel, checkFuel, fuelRate } from './fuel';
+import { createPod, rowOf, type Pod } from './pod';
+import { stepMotion } from './podMotion';
+import { damage, fallDamage, stepRecovery } from './recovery';
+import { startTiers, statsFor, type PodStats, type Tiers } from './stats';
 
 /** Tunable copies of the data configs; the debug panel edits these. */
 export interface SimSettings {
@@ -21,75 +28,63 @@ export function defaultSettings(): SimSettings {
   return { pod: { ...POD }, feel: structuredClone(FEEL) };
 }
 
+export type GameStatus =
+  | { kind: 'play' }
+  /** The rescue drone is on its way; `left` seconds until the pod is at the surface. */
+  | { kind: 'rescue'; left: number }
+  /** The pod was destroyed; a new one appears on the surface in `left` seconds. */
+  | { kind: 'respawn'; left: number };
+
 export interface GameState {
   /** Simulated seconds since the start. */
   time: number;
+  seed: number;
   grid: Grid;
   pod: Pod;
+  tiers: Tiers;
   stats: PodStats;
+  cash: number;
+  fuel: number;
+  hull: number;
+  cargo: Cargo;
+  status: GameStatus;
+  /** Last fuel warning given: 0 none, 1 below 20 %, 2 below 10 %. */
+  fuelAlert: 0 | 1 | 2;
+  /** Zone the pod is in, 1 to 5; the surface counts as zone 1. */
+  zone: number;
   /** Simulation time of each action's latest press, for the input and landing buffers (§5). */
   pressedAt: Record<Action, number>;
 }
 
-export function createGame(grid: Grid, settings: SimSettings): GameState {
+export function createGame(grid: Grid, settings: SimSettings, seed = 0): GameState {
   const pressedAt = {} as Record<Action, number>;
   for (const action of ACTIONS) pressedAt[action] = -Infinity;
+  const tiers = startTiers();
+  const stats = statsFor(tiers);
   return {
     time: 0,
+    seed,
     grid,
     pod: createPod(WORLD.spawnCol, -1, settings.pod.halfSize),
-    stats: statsFor(startTiers()),
+    tiers,
+    stats,
+    cash: ECONOMY.startCash,
+    fuel: stats.tankLiters,
+    hull: stats.maxHull,
+    cargo: emptyCargo(),
+    status: { kind: 'play' },
+    fuelAlert: 0,
+    zone: 1,
     pressedAt,
   };
 }
 
-const DRILL_DIRS: readonly DrillDir[] = ['down', 'left', 'right'];
-
-function bufferSeconds(buffer: { enabled: boolean; ms: number }): number {
-  return buffer.enabled ? buffer.ms / 1000 : 0;
-}
-
-/** Drilling directions the player asks for: held ones first, then presses inside the window. */
-function requestedDrills(state: GameState, input: InputFrame, windowSeconds: number): DrillDir[] {
-  const requested = DRILL_DIRS.filter(
-    (dir) => input.held[dir] || state.time - state.pressedAt[dir] <= windowSeconds + 1e-9,
-  );
-  return requested.sort((a, b) => {
-    const held = Number(input.held[b]) - Number(input.held[a]);
-    return held !== 0 ? held : state.pressedAt[b] - state.pressedAt[a];
-  });
-}
-
-function tryDrill(
-  state: GameState,
-  input: InputFrame,
-  settings: SimSettings,
-  events: EventBus<GameEvents>,
-  windowSeconds: number,
-  carry: number,
-): void {
-  if (!state.pod.grounded || input.held.up) return;
-  for (const dir of requestedDrills(state, input, windowSeconds)) {
-    const drill = startDrill(state.pod, state.grid, dir, state.stats, settings.pod.halfSize, carry);
-    if (!drill) continue;
-    const hardness = hardnessAt(state.grid, drill.col, drill.row) ?? 0;
-    events.emit('DrillStarted', {
-      col: drill.col,
-      row: drill.row,
-      dir,
-      seconds: drill.duration,
-      hardness,
-    });
-    return;
-  }
-}
-
-function motionControls(state: GameState, input: InputFrame): MotionControls {
-  const { left, right, up } = input.held;
-  let horizontal: -1 | 0 | 1 = left ? -1 : right ? 1 : 0;
-  // Both held: the later press wins.
-  if (left && right) horizontal = state.pressedAt.left > state.pressedAt.right ? -1 : 1;
-  return { horizontal, thrusting: up };
+function trackZone(state: GameState, events: EventBus<GameEvents>): void {
+  const row = rowOf(state.pod.y);
+  const zone = row < 0 ? 1 : zoneAt(row).index;
+  if (zone === state.zone) return;
+  state.zone = zone;
+  events.emit('ZoneEntered', { zone });
 }
 
 /** One fixed simulation step (GAME_SPEC §3, §9.1). */
@@ -106,41 +101,49 @@ export function stepGame(
   pod.prevX = pod.x;
   pod.prevY = pod.y;
 
-  if (pod.drill) {
-    const broken = advanceDrill(pod, state.grid, dt);
-    if (!broken) return;
-    events.emit('BlockBroken', {
-      col: broken.col,
-      row: broken.row,
-      block: broken.block,
-      mineral: broken.mineral,
-    });
-    // Input buffer (§5.1): what was pressed shortly before the block gave way runs right now.
-    tryDrill(
-      state,
-      input,
-      settings,
-      events,
-      bufferSeconds(settings.feel.inputBuffer),
-      broken.overflow,
-    );
+  if (state.status.kind !== 'play') {
+    stepRecovery(state, dt, settings.pod.halfSize, events);
     return;
   }
 
-  const motion = stepMotion(
-    pod,
-    state.grid,
-    motionControls(state, input),
-    dt,
-    settings.pod,
-    state.stats,
-    settings.feel,
-  );
-  if (motion.engineStarted) events.emit('EngineStarted', {});
-  if (motion.landingSpeed !== null) {
-    events.emit('Landed', { speed: motion.landingSpeed, fallHeight: motion.fallHeight });
+  const powered = state.fuel > 0;
+  if (pod.drill) {
+    burnFuel(state, FUEL.drillPerSecond * dt);
+    const broken = advanceDrill(pod, state.grid, dt);
+    if (broken) {
+      const { col, row, block, mineral } = broken;
+      events.emit('BlockBroken', { col, row, block, mineral });
+      if (block === Block.Ore) {
+        collectMineral(state.cargo, state.stats.cargoCapacity, mineral, { col, row }, events);
+      }
+      // Input buffer (§5.1): what was pressed shortly before the block gave way runs right now.
+      const window = bufferSeconds(settings.feel.inputBuffer);
+      if (state.fuel > 0) tryDrill(state, input, settings, events, window, broken.overflow);
+    }
+  } else {
+    const controls = powered ? motionControls(state, input) : IDLE_CONTROLS;
+    const motion = stepMotion(
+      pod,
+      state.grid,
+      controls,
+      dt,
+      settings.pod,
+      state.stats,
+      settings.feel,
+    );
+    burnFuel(state, fuelRate(pod, controls) * dt);
+    if (motion.engineStarted) events.emit('EngineStarted', {});
+    if (motion.landingSpeed !== null) {
+      events.emit('Landed', { speed: motion.landingSpeed, fallHeight: motion.fallHeight });
+      damage(state, fallDamage(motion.fallHeight), 'fall', events);
+    }
+    if (powered && state.status.kind === 'play') {
+      // Landing buffer (§5.2): a drilling direction pressed shortly before touchdown.
+      const window = motion.landingSpeed !== null ? bufferSeconds(settings.feel.landingBuffer) : 0;
+      tryDrill(state, input, settings, events, window, 0);
+    }
   }
-  // Landing buffer (§5.2): a drilling direction pressed shortly before touchdown runs on landing.
-  const window = motion.landingSpeed !== null ? bufferSeconds(settings.feel.landingBuffer) : 0;
-  tryDrill(state, input, settings, events, window, 0);
+
+  trackZone(state, events);
+  checkFuel(state, events);
 }

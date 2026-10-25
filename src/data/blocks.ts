@@ -63,3 +63,8 @@ export const BLOCKS: Readonly<Record<BlockId, BlockInfo>> = {
 export function isSolid(block: BlockId): boolean {
   return BLOCKS[block].solid;
 }
+
+/** True when the drill can get through it (§4). */
+export function isDrillable(block: BlockId): boolean {
+  return BLOCKS[block].hardness.kind !== 'none';
+}

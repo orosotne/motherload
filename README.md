@@ -17,13 +17,24 @@ Potom otvor http://localhost:5173 v Chrome alebo Safari.
 
 ## Ovládanie
 
-| Klávesy              | Akcia                    |
-| -------------------- | ------------------------ |
-| A / D alebo ← / →    | jazda a vŕtanie do strán |
-| S alebo ↓            | vŕtanie dole             |
-| W, ↑ alebo medzerník | let                      |
+| Klávesy              | Akcia                                     |
+| -------------------- | ----------------------------------------- |
+| A / D alebo ← / →    | jazda a vŕtanie do strán                  |
+| S alebo ↓            | vŕtanie dole                              |
+| W, ↑ alebo medzerník | let                                       |
+| E                    | vstup do budovy, keď modul stojí pred ňou |
+| Esc alebo E          | zatvorí obchod                            |
 
-Nahor ani vo vzduchu sa vŕtať nedá. Ovládač (gamepad) príde vo fáze F4.
+Nahor ani vo vzduchu sa vŕtať nedá. V obchode vyberáš šípkami alebo WASD a potvrdzuješ Enterom či medzerníkom. Ovládač (gamepad) príde vo fáze F4.
+
+## Ako sa hrá
+
+1. Vŕtaj dole a zbieraj minerály. Náklad, palivo, trup a hĺbku vidíš vľavo hore.
+2. Vráť sa na povrch skôr, než minieš palivo. Let nahor míňa najviac.
+3. Pred **Mirin Výkup** (červená budova) stlač E a predaj náklad.
+4. U **Pipa** (modrá) natankuj, u **Gusa** (zelená) oprav trup.
+
+Keď minieš palivo, dron ťa odtiahne k Pipovi za 15 % hotovosti a polovicu nákladu. Zničený modul stojí 25 % hotovosti a celý náklad. Upgrady zostávajú.
 
 ## Príkazy
 

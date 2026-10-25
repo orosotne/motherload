@@ -39,3 +39,24 @@ export class Rng {
     return this.next() < p;
   }
 }
+
+/**
+ * Derives an independent seed for one part of the generation (caves, ore, …), so adding a step
+ * never changes the others.
+ */
+export function mixSeed(seed: number, salt: number): number {
+  let h = (seed ^ Math.imul(salt, 0x9e3779b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Seed from text the player types for a new game (FNV-1a), so "tumbra" is always the same world. */
+export function seedFromText(text: string): number {
+  let h = 0x811c9dc5;
+  for (const char of text.trim().toLowerCase()) {
+    h ^= char.codePointAt(0) ?? 0;
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}

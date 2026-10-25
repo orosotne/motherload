@@ -61,6 +61,11 @@ export class Input {
     this.heldKeys.clear();
   }
 
+  /** Forgets presses not yet sampled, e.g. the key that just closed a menu. */
+  clearPresses(): void {
+    this.pressedSinceSample.clear();
+  }
+
   private onKey(event: KeyboardEvent, down: boolean): void {
     const action = KEYBOARD[event.code];
     if (!action) return;

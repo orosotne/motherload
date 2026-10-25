@@ -16,6 +16,13 @@ interface Pulse {
   left: number;
 }
 
+export interface PodDrawOptions {
+  /** Squash and stretch switched on (§5.3). */
+  pulses: boolean;
+  hidden: boolean;
+  lift: number;
+}
+
 const FLAME_LENGTH = 0.7;
 const FLAME_FLICKER = 0.15;
 
@@ -59,11 +66,17 @@ export class PodView {
     if (duration > 0) this.pulse = { scaleX, scaleY, duration, left: duration };
   }
 
-  update(pod: Pod, alpha: number, dt: number, pulsesEnabled: boolean): void {
+  /**
+   * Draws the pod between its last two simulation states. `lift` raises it while the rescue
+   * drone tows it; `hidden` hides a destroyed pod.
+   */
+  update(pod: Pod, alpha: number, dt: number, options: PodDrawOptions): void {
     this.time += dt;
+    this.root.visible = !options.hidden;
     const x = pod.prevX + (pod.x - pod.prevX) * alpha;
-    const y = pod.prevY + (pod.y - pod.prevY) * alpha;
+    const y = pod.prevY + (pod.y - pod.prevY) * alpha + options.lift;
     this.root.position.set(x, y - this.half, 0);
+    const pulsesEnabled = options.pulses;
 
     let scaleX = 1;
     let scaleY = 1;
