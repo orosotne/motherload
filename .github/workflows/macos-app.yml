@@ -1,0 +1,45 @@
+# The native macOS app (GAME_SPEC F6): builds it for Apple Silicon and Intel, checks that it
+# starts, and keeps the disk image as an artifact of the run.
+name: macOS app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'src-tauri/**'
+      - '.github/workflows/macos-app.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Rust for Apple Silicon and Intel
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: npm ci
+      - name: Build the app
+        run: npm run app:build -- --target universal-apple-darwin
+      - name: The app starts and keeps running
+        run: |
+          app="src-tauri/target/universal-apple-darwin/release/bundle/macos/HLBINA.app"
+          exe=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          "$app/Contents/MacOS/$exe" &
+          pid=$!
+          sleep 20
+          kill -0 "$pid"
+          kill "$pid"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HLBINA-macos
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error

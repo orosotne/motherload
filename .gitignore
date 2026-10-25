@@ -5,3 +5,6 @@ coverage/
 *.log
 .DS_Store
 release/
+# Native app (Tauri): Rust build output and generated permission schemas.
+src-tauri/target/
+src-tauri/gen/
