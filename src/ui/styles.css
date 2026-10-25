@@ -342,6 +342,29 @@ kbd {
   }
 }
 
+/* "+$150" flying to the cargo readout (§5.6). */
+.popup {
+  position: absolute;
+  font-size: 22px;
+  font-weight: 700;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 45%),
+    0 0 12px rgb(0 0 0 / 35%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pause-help {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-muted);
+  font-size: 14px;
+}
+
+.pause-help p {
+  margin: 0;
+}
+
 /* Overheating: a red glow from the edges. */
 .heat-glow {
   position: absolute;
