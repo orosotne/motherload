@@ -73,6 +73,27 @@ export class Grid {
     for (let i = 0; i < this.versions.length; i++) this.bump(i);
   }
 
+  /** Copies of both cell layers, e.g. the world as generated; saves store only changes to it. */
+  snapshot(): { blocks: Uint8Array; minerals: Uint8Array } {
+    return { blocks: this.blocks.slice(), minerals: this.minerals.slice() };
+  }
+
+  /**
+   * Cells that differ from `base` (a snapshot of the same size), flattened as
+   * [index, block, mineral, index, block, mineral, …] with index = row × width + col.
+   */
+  diff(base: { blocks: Uint8Array; minerals: Uint8Array }): number[] {
+    const changes: number[] = [];
+    for (let index = 0; index < this.blocks.length; index++) {
+      const block = this.blocks[index] ?? 0;
+      const mineral = this.minerals[index] ?? 0;
+      if (block !== base.blocks[index] || mineral !== base.minerals[index]) {
+        changes.push(index, block, mineral);
+      }
+    }
+    return changes;
+  }
+
   chunkIndex(col: number, row: number): number {
     const chunkCol = Math.floor(col / this.chunkSize);
     const chunkRow = Math.floor(row / this.chunkSize);
