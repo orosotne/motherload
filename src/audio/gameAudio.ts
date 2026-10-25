@@ -47,18 +47,22 @@ export class GameAudio {
     events.on('Destroyed', () => sfx.explosion(2));
   }
 
-  /** Per frame: the drill and engine loops follow the pod, the music follows the zone. */
-  update(): void {
+  /**
+   * Per frame: the drill and engine loops follow the pod, the music follows the zone. While a
+   * menu stops the game (`paused`), the loops fall silent and the music plays on.
+   */
+  update(paused: boolean): void {
     const { state } = this;
     const { pod, grid } = state;
-    if (pod.drill && state.status.kind === 'play') {
+    const playing = state.status.kind === 'play' && !paused;
+    if (pod.drill && playing) {
       const life = this.settings.feel.drillLife;
       const hardness = life.enabled ? (hardnessAt(grid, pod.drill.col, pod.drill.row) ?? 1) : 1.5;
       this.sfx.drillOn(life.pitchBase + life.pitchPerHardness * hardness);
     } else {
       this.sfx.drillOff();
     }
-    this.sfx.thrust(state.status.kind === 'play' ? pod.thrust : 0);
+    this.sfx.thrust(playing ? pod.thrust : 0);
     this.music.update(rowOf(pod.y) < 0 ? 'surface' : `zone${state.zone}`);
   }
 }

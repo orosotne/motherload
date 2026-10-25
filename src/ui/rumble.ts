@@ -35,8 +35,9 @@ export class Rumble {
     events.on('MineralCollected', () => on(0.25, 0, 60));
   }
 
-  update(state: GameState, dt: number): void {
-    if (!state.pod.drill || !this.feel.rumble.enabled) {
+  /** Pulses while drilling; nothing while a menu stops the game (`paused`). */
+  update(state: GameState, dt: number, paused: boolean): void {
+    if (!state.pod.drill || !this.feel.rumble.enabled || paused) {
       this.sinceDrillPulse = DRILL_PULSE;
       return;
     }

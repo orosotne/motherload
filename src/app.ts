@@ -136,9 +136,9 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     },
     render: (alpha, frameSeconds) => {
       const renderStart = performance.now();
-      view.render(alpha, frameSeconds);
-      audio.update();
-      rumble.update(state, frameSeconds);
+      view.render(alpha, frameSeconds, panels.isOpen);
+      audio.update(panels.isOpen);
+      rumble.update(state, frameSeconds, panels.isOpen);
       hud.update(state);
       heatGlow.update(state);
       fade.update(state, frameSeconds);

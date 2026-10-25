@@ -132,7 +132,8 @@ export class GameView {
     };
   }
 
-  render(alpha: number, frameSeconds: number): void {
+  /** `paused`: a menu stops the game, so the pod stops shaking and its drill stops turning. */
+  render(alpha: number, frameSeconds: number, paused = false): void {
     this.renderer.info.reset();
     this.time += frameSeconds;
     const { feel } = this.settings;
@@ -149,7 +150,8 @@ export class GameView {
     const { pod } = this.state;
     this.pod.update(pod, alpha, frameSeconds, {
       pulses: feel.squash.enabled,
-      drillShake: feel.drillLife.enabled ? feel.drillLife.shake : 0,
+      drillShake: feel.drillLife.enabled && !paused ? feel.drillLife.shake : 0,
+      paused,
       hidden: this.state.status.kind === 'respawn',
       lift,
       tiers: this.state.tiers,

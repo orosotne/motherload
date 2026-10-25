@@ -16,6 +16,8 @@ export interface PodDrawOptions {
   pulses: boolean;
   /** Shake of the pod while drilling (§5.4); 0 turns it off. */
   drillShake: number;
+  /** The game is stopped by a menu: the drill stops turning. */
+  paused: boolean;
   hidden: boolean;
   lift: number;
   tiers: Tiers;
@@ -81,7 +83,7 @@ export class PodView {
     }
     this.body.scale.set(scaleX, scaleY, scaleX);
 
-    this.placeDrill(pod, dt);
+    this.placeDrill(pod, options.paused ? 0 : dt);
     const { flame } = this.model;
     const flicker = 1 + Math.sin(this.time * 47) * FLAME_FLICKER * pod.thrust;
     flame.visible = pod.thrust > 0.02;
