@@ -4,10 +4,15 @@ import { ECONOMY } from '../data/economy';
 import { MINERALS } from '../data/minerals';
 import { decimal, money, t, type TextKey } from '../i18n';
 import { cargoUnits, cargoValue } from '../sim/cargo';
-import { refuel, refuelOffer, refuelQuote, repair, repairQuote, sellAll } from '../sim/economy';
+import { refuel, refuelOffer, refuelQuote, sellAll } from '../sim/economy';
 import type { GameEvents } from '../sim/events';
 import type { GameState } from '../sim/game';
 import type { PanelView } from './panel';
+import { supplyDepot } from './supply';
+import { workshop } from './workshop';
+
+/** A shop's part of the panel; the title and colour come from the building. */
+export type ShopContent = Omit<PanelView, 'title' | 'color'>;
 
 export interface ShopContext {
   state: GameState;
@@ -16,7 +21,7 @@ export interface ShopContext {
   note: { text: string };
 }
 
-function fuelStation({ state, events, note }: ShopContext): Omit<PanelView, 'title' | 'color'> {
+function fuelStation({ state, events, note }: ShopContext): ShopContent {
   const quote = refuelQuote(state);
   const offer = refuelOffer(state);
   const full = quote.liters < 0.05;
@@ -73,7 +78,7 @@ function cargoList(state: GameState): HTMLElement {
   return list;
 }
 
-function buyer({ state, events, note }: ShopContext): Omit<PanelView, 'title' | 'color'> {
+function buyer({ state, events, note }: ShopContext): ShopContent {
   const units = cargoUnits(state.cargo);
   return {
     line: units > 0 ? t('buyer.greeting') : t('buyer.empty'),
@@ -93,33 +98,6 @@ function buyer({ state, events, note }: ShopContext): Omit<PanelView, 'title' | 
   };
 }
 
-function workshop({ state, events, note }: ShopContext): Omit<PanelView, 'title' | 'color'> {
-  const quote = repairQuote(state);
-  const broke = state.cash < ECONOMY.repairPricePerHp;
-  let fallback = '';
-  if (quote.hp === 0) fallback = t('workshop.noRepair');
-  else if (broke) fallback = t('workshop.broke');
-  return {
-    line: t('workshop.greeting', { hull: state.hull, max: state.stats.maxHull }),
-    note: note.text || fallback,
-    actions: [
-      {
-        label: t('workshop.repair'),
-        detail: quote.hp > 0 ? money(quote.cost) : '',
-        disabled: quote.hp === 0 || broke,
-        run: () => {
-          const result = repair(state, events);
-          note.text = t('workshop.repaired', { hp: result.hp, cost: money(result.cost) });
-        },
-      },
-    ],
-  };
-}
-
-function supply(): Omit<PanelView, 'title' | 'color'> {
-  return { line: t('supply.greeting'), actions: [] };
-}
-
 /** The panel of a surface building, drawn from the current state (§3, §6). */
 export function shopView(id: BuildingId, context: ShopContext): PanelView {
   const building = BUILDINGS.find((candidate) => candidate.id === id);
@@ -127,7 +105,7 @@ export function shopView(id: BuildingId, context: ShopContext): PanelView {
     fuel: fuelStation,
     buyer,
     workshop,
-    supply,
+    supply: supplyDepot,
   }[id](context);
   return {
     title: building ? t(building.key as TextKey) : id,

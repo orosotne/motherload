@@ -1,7 +1,11 @@
 import { GUI } from 'lil-gui';
 import type { GameLoop } from '../../core/loop';
+import { UPGRADE_BRANCHES } from '../../data/upgrades';
+import { WORLD } from '../../data/world';
 import type { CameraRig } from '../../render/camera';
-import type { SimSettings } from '../../sim/game';
+import type { GameState, SimSettings } from '../../sim/game';
+import { statsFor } from '../../sim/stats';
+import { maxTier } from '../../sim/upgrades';
 import { addFeelFolder } from './feelFolder';
 import { PerfMeter, type RenderInfo } from './perfMeter';
 
@@ -12,8 +16,14 @@ export interface DebugTargets {
   renderInfo: RenderInfo;
   /** Live simulation settings: game feel and pod physics. */
   settings: SimSettings;
+  /** The live game, for money and upgrades. */
+  state: GameState;
   /** Puts the pod back on the surface. */
   resetPod: () => void;
+  /** Puts the pod into a row, clearing that cell (§9.9: teleport to a depth). */
+  teleport: (row: number) => void;
+  /** Throws the save away and starts a new world. */
+  newGame: () => void;
 }
 
 export interface DebugTools {
@@ -53,6 +63,29 @@ export function createDebugTools(targets: DebugTargets): DebugTools {
   camera.add(settings, 'distance', 5, 60, 0.5).name('distance (blocks)').onChange(apply);
 
   addFeelFolder(gui, targets.settings.feel);
+
+  const game = gui.addFolder('Game');
+  const { state } = targets;
+  const jump = { row: 100 };
+  game.add({ cash: () => (state.cash += 10_000) }, 'cash').name('+ $10 000');
+  game.add({ rich: () => (state.cash += 1_000_000) }, 'rich').name('+ $1 000 000');
+  game
+    .add(
+      {
+        max: () => {
+          for (const branch of UPGRADE_BRANCHES) state.tiers[branch] = maxTier(branch);
+          state.stats = statsFor(state.tiers);
+          state.fuel = state.stats.tankLiters;
+          state.hull = state.stats.maxHull;
+        },
+      },
+      'max',
+    )
+    .name('all upgrades T6');
+  game.add(jump, 'row', 0, WORLD.height - 1, 1).name('teleport row');
+  game.add({ go: () => targets.teleport(jump.row) }, 'go').name('teleport');
+  game.add({ fresh: targets.newGame }, 'fresh').name('new game (deletes the save)');
+  game.close();
 
   const pod = gui.addFolder('Pod');
   const physics = targets.settings.pod;

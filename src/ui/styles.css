@@ -130,6 +130,14 @@ body {
   background: linear-gradient(90deg, var(--ui-hull-end), var(--ui-hull));
 }
 
+.is-heat .hud-bar-fill {
+  background: linear-gradient(90deg, #ffb347, #ff5d3d);
+}
+
+.hud-gauge[hidden] {
+  display: none;
+}
+
 /* Critical values pulse (§3, §8): below 20 % softly, below 10 % hard and red. */
 .hud-gauge.is-low .hud-bar {
   animation: hud-pulse 900ms ease-in-out infinite;
@@ -180,9 +188,70 @@ body {
   color: var(--ui-danger);
 }
 
+.hud-money {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
 .hud-cash {
   font-size: 22px;
   font-weight: 700;
+  color: var(--ui-gold);
+}
+
+.hud-relics {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+
+/* Equipment slots (§8): five boxes, the selected one ringed. */
+.slot-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 10%);
+  color: var(--ui-text);
+}
+
+.slot.is-empty {
+  background: rgb(255 255 255 / 4%);
+}
+
+.slot.is-selected {
+  box-shadow: 0 0 0 2px var(--ui-gold);
+}
+
+.slot-key {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ui-muted);
+}
+
+.slot-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+}
+
+.slot-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.slot-icon.is-set {
   color: var(--ui-gold);
 }
 
@@ -273,6 +342,16 @@ kbd {
   }
 }
 
+/* Overheating: a red glow from the edges. */
+.heat-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(255 60 30 / 55%) 100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 300ms linear;
+}
+
 /* Fade to black for the rescue tow and the respawn. */
 .fade {
   position: absolute;
@@ -295,7 +374,7 @@ kbd {
 }
 
 .panel {
-  width: min(560px, 100%);
+  width: min(640px, 100%);
   max-height: calc(100% - 32px);
   overflow: auto;
   border-radius: 24px;
@@ -340,6 +419,15 @@ kbd {
   gap: 10px;
 }
 
+.panel-actions.is-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* The close button spans both columns of a card grid. */
+.panel-actions.is-grid > :last-child {
+  grid-column: 1 / -1;
+}
+
 .panel-action {
   display: flex;
   justify-content: space-between;
@@ -378,6 +466,61 @@ kbd {
 .panel-action small {
   color: var(--ui-gold);
   font-size: 17px;
+  white-space: nowrap;
+}
+
+.panel-action-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.panel-action-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.panel-action-sub {
+  color: var(--ui-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.panel-icon {
+  display: grid;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--ui-gold);
+}
+
+.panel-pips {
+  display: flex;
+  gap: 3px;
+}
+
+.panel-pips i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 18%);
+}
+
+.panel-pips i.is-on {
+  background: var(--ui-gold);
+}
+
+.supply-slots {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-muted);
+  font-size: 14px;
+}
+
+.supply-slots .slot-row {
+  max-width: 260px;
 }
 
 .panel-hint {

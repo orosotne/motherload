@@ -23,6 +23,7 @@ export class Fade {
     parent.append(this.root);
     events.on('Rescued', () => (this.fadeIn = FADE_IN));
     events.on('Respawned', () => (this.fadeIn = FADE_IN));
+    events.on('Teleported', () => (this.fadeIn = FADE_IN));
   }
 
   update(state: GameState, dt: number): void {
