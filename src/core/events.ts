@@ -3,7 +3,9 @@ export type Handler<T> = (payload: T) => void;
 
 /**
  * Typed synchronous event bus (GAME_SPEC §9.5). The simulation emits facts such as BlockBroken or
- * MineralCollected; renderer, audio and UI subscribe. Subscribers must never change game state.
+ * MineralCollected; renderer, audio and UI subscribe. Subscribers must never change game state;
+ * the one exception is the story director's list of radio messages played (src/story), which no
+ * game rule reads.
  *
  * `Events` maps each event name to its payload type, e.g. `{ ZoneEntered: { zone: number } }`.
  */

@@ -52,6 +52,7 @@ export class Radio {
   private readonly beeps: HTMLElement;
   private readonly typed: HTMLElement;
   private readonly rest: HTMLElement;
+  private readonly announcer: HTMLElement;
   private readonly queue: { message: RadioMessage; waited: number }[] = [];
   private playing: Playing | null = null;
   private leaving = 0;
@@ -62,9 +63,12 @@ export class Radio {
     private readonly onStart: (speaker: Speaker) => void = () => undefined,
   ) {
     this.root = element('div', 'radio', parent);
-    this.root.setAttribute('role', 'status');
-    this.root.setAttribute('aria-live', 'polite');
+    // Screen readers get each message once and whole from the announcer, not every letter.
+    this.root.setAttribute('aria-hidden', 'true');
     this.root.hidden = true;
+    this.announcer = element('p', 'sr-only', parent);
+    this.announcer.setAttribute('role', 'status');
+    this.announcer.setAttribute('aria-live', 'polite');
     this.portrait = element('div', 'radio-portrait', this.root);
     const body = element('div', 'radio-body', this.root);
     const head = element('div', 'radio-head', body);
@@ -141,6 +145,7 @@ export class Radio {
     // Static SVG from portraits.ts, never text from the game or the player.
     this.portrait.innerHTML = PORTRAITS[speaker];
     this.name.textContent = t(`speaker.${speaker}` as TextKey);
+    this.announcer.textContent = `${this.name.textContent}: ${text}`;
     this.beeps.textContent = speaker === 'pip' ? beeps(message.id) : '';
     this.root.hidden = false;
     this.draw();
