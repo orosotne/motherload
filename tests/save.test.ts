@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Block } from '../src/data/blocks';
 import { migrate } from '../src/save/migrations';
 import { newGame, restore, serialize, settled } from '../src/save/save';
-import { SCHEMA_VERSION } from '../src/save/schema';
+import { SCHEMA_VERSION, type SaveData } from '../src/save/schema';
 import { readSave, writeSave, type SaveStorage } from '../src/save/storage';
 import { defaultSettings } from '../src/sim/game';
 import { createPod } from '../src/sim/pod';
@@ -176,5 +176,49 @@ describe('saving (§9.8)', () => {
     const { state, baseline } = playedGame();
     expect(writeSave(serialize(state, baseline), refusing)).toBe(false);
     expect(readSave(refusing)).toBeNull();
+  });
+});
+
+describe('saving the story (§7, §9.8)', () => {
+  it('keeps the messages played, the quakes and the ending', () => {
+    const { state, baseline, settings } = playedGame();
+    state.story = { seen: ['gus.intro', 'mira.relic.1'], quakes: 0b1000, finished: true };
+    const data = migrate(JSON.parse(JSON.stringify(serialize(state, baseline))));
+    if (!data) throw new Error('no save');
+    expect(restore(data, settings).state.story).toEqual(state.story);
+  });
+
+  it('gives a save from before the story what it already lived through', () => {
+    const { state, baseline } = playedGame();
+    state.deepestZone = 3;
+    const old: Partial<SaveData> = { ...serialize(state, baseline), schemaVersion: 1 };
+    delete old.story;
+    const data = migrate(old);
+    expect(data?.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(data?.story.seen).toEqual([
+      'gus.intro',
+      'mira.intro',
+      'pip.intro',
+      'gus.zone2',
+      'gus.quake3',
+      'voice.zone3',
+      'mira.relic.1',
+    ]);
+    expect(data?.story.quakes).toBe(1 << 3);
+    expect(data?.story.finished).toBe(false);
+  });
+
+  it('drops only the damaged parts of a saved story', () => {
+    const { state, baseline } = playedGame();
+    const saved = serialize(state, baseline);
+    const data = migrate({
+      ...saved,
+      story: { seen: ['gus.intro', 7, '<b>', 'gus.intro', 'pip.depth400'], quakes: 'x' },
+    });
+    expect(data?.story).toEqual({
+      seen: ['gus.intro', 'pip.depth400'],
+      quakes: 0,
+      finished: false,
+    });
   });
 });

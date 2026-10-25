@@ -2,7 +2,7 @@ import type { ItemId } from '../data/items';
 import type { UpgradeBranch } from '../data/upgrades';
 
 /** Version of the save format (GAME_SPEC §9.8); older saves are migrated in migrations.ts. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * A saved game as stored in localStorage. The world is its seed plus the cells changed since
@@ -29,6 +29,8 @@ export interface SaveData {
   heat: number;
   relics: boolean[];
   deepestZone: number;
+  /** The story so far (§7): radio messages played, zones that quaked, the ending reached. */
+  story: { seen: string[]; quakes: number; finished: boolean };
   /** Changed cells as [index, block, mineral] triples, flattened. */
   world: number[];
 }
