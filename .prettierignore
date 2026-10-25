@@ -1,5 +1,8 @@
 dist
 coverage
+release
+src-tauri/target
+src-tauri/gen
 package-lock.json
 # The binding spec is the author's own document: never reformat it.
 GAME_SPEC.md

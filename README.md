@@ -2,6 +2,8 @@
 
 2.5D ťažobná hra typu dig → sell → upgrade v TypeScripte a Three.js. Záväzná špecifikácia je v [GAME_SPEC.md](GAME_SPEC.md).
 
+Hra je hotová vo verzii 1.0.0: hrá sa v prehliadači a ako natívna aplikácia pre macOS a je pripravená na itch.io (pozri [Vydanie](#vydanie)). Podľa playtestu trvá prechod asi 3 až 4 hodiny.
+
 ## Spustenie na Macu
 
 Potrebuješ Node.js 22.13 alebo novší, odporúčaný je 24 LTS. Over to cez `node -v`. Ak Node nemáš, stiahni LTS z [nodejs.org](https://nodejs.org) alebo použi `nvm install` (číta `.nvmrc`).
@@ -15,6 +17,15 @@ npm run dev
 
 Potom otvor http://localhost:5173 v Chrome alebo Safari.
 
+## Hlavné menu a nastavenia
+
+- **Pokračovať** vráti uloženú hru a ukáže jej hĺbku, peniaze a relikvie. Bez uloženej hry je tu **Hrať**.
+- **Nová hra:** náhodný svet, alebo svet z vlastného seedu. Seed je číslo alebo hocijaké slovo a ten istý seed dá vždy ten istý svet. Rozohranú hru nová hra zmaže, preto ju treba potvrdiť druhým stlačením.
+- **Nastavenia:** hlasitosť (celková, hudba, efekty), jazyk (slovenčina, angličtina), ovládanie, vibrácie ovládača a trasenie obrazovky. Hodnotu meníš šípkami doľava a doprava. Nastavenia sa ukladajú zvlášť a nová hra ich nezmaže.
+- **Autori** a verzia hry.
+
+Esc v hre otvorí pauzu: pokračovať, Album relikvií, nastavenia a hlavné menu. Hra sa pred odchodom do menu uloží.
+
 ## Ovládanie
 
 | Klávesy              | Akcia                                     |
@@ -27,9 +38,11 @@ Potom otvor http://localhost:5173 v Chrome alebo Safari.
 | 1 až 5               | výber slotu vybavenia                     |
 | F                    | použije vybavenie z vybraného slotu       |
 | Enter                | dopíše a potom zavrie správu z rádia      |
-| Esc                  | pauza: Album, hlasitosť, jazyk, nová hra  |
+| Esc                  | pauza                                     |
 
 Nahor ani vo vzduchu sa vŕtať nedá. V obchode vyberáš šípkami alebo WASD a potvrdzuješ Enterom či medzerníkom.
+
+Klávesy A, D, W, S, F, E a Enter si zmeníš v **Nastavenia → Ovládanie**: vyber akciu a stlač nový kláves. Šípky, medzerník, Esc, Num Enter a 1 až 5 fungujú vždy, takže sa z hry nikdy nezamkneš.
 
 ### Ovládač
 
@@ -77,16 +90,52 @@ Hra sa ukladá sama: každých 10 sekúnd, po odchode z obchodu a pri zatvorení
 
 ## Príkazy
 
-| Príkaz                | Čo robí                                                       |
-| --------------------- | ------------------------------------------------------------- |
-| `npm run dev`         | dev server s debug nástrojmi                                  |
-| `npm run build`       | typecheck a produkčný build do `dist/`                        |
-| `npm run preview`     | spustí produkčný build na http://localhost:4173               |
-| `npm test`            | testy (Vitest)                                                |
-| `npm run lint`        | ESLint                                                        |
-| `npm run format`      | naformátuje kód (Prettier)                                    |
-| `npm run check`       | typecheck, lint, formát a testy naraz                         |
-| `npm run sim:economy` | odhad príjmu za výlet a priebeh celej hry voči cieľom balansu |
+| Príkaz                | Čo robí                                                  |
+| --------------------- | -------------------------------------------------------- |
+| `npm run dev`         | dev server s debug nástrojmi                             |
+| `npm run build`       | typecheck a produkčný build do `dist/`                   |
+| `npm run preview`     | spustí produkčný build na http://localhost:4173          |
+| `npm test`            | testy (Vitest)                                           |
+| `npm run lint`        | ESLint                                                   |
+| `npm run format`      | naformátuje kód (Prettier)                               |
+| `npm run check`       | typecheck, lint, formát a testy naraz                    |
+| `npm run sim:economy` | odhad príjmu za výlet a začiatok hry voči cieľom balansu |
+| `npm run playtest`    | bot odohrá 6 celých hier a porovná ich s cieľmi balansu  |
+| `npm run pack:web`    | zip pre itch.io do `release/`                            |
+| `npm run app:dev`     | hra v natívnom okne s dev serverom                       |
+| `npm run app:build`   | natívna aplikácia (`.app` a `.dmg` na Macu)              |
+
+## Vydanie
+
+### Web na itch.io
+
+1. `npm run pack:web` postaví hru a zbalí ju do `release/hlbina-<verzia>-web.zip`. Skontroluje, že build používa len relatívne cesty a zmestí sa do 2 MB.
+2. Na itch.io vytvor nový projekt, v **Kind of project** vyber **HTML** a nahraj zip.
+3. Pri súbore zaškrtni **This file will be played in the browser**.
+4. V **Embed options** nastav veľkosť 1280 × 720 a zapni **Fullscreen button**.
+
+### Aplikácia pre macOS
+
+Natívna aplikácia je [Tauri](https://tauri.app) okno s tou istou hrou (`src-tauri/`).
+
+**Bez inštalácie čohokoľvek:** na GitHube otvor **Actions → macOS app → Run workflow**. Po dobehnutí je v artefaktoch behu `HLBINA-macos` s `.dmg`. Rovnako sa postaví pri každom tagu `v*`.
+
+**Na vlastnom Macu:** potrebuješ Xcode Command Line Tools (`xcode-select --install`) a Rust z [rustup.rs](https://rustup.rs).
+
+```sh
+npm install
+npm run app:build
+```
+
+Výsledok je v `src-tauri/target/release/bundle/`: `macos/HLBINA.app` a `dmg/HLBINA_<verzia>_aarch64.dmg`. Pre Apple Silicon aj Intel naraz pridaj `rustup target add x86_64-apple-darwin` a spusti `npm run app:build -- --target universal-apple-darwin`.
+
+**Prvé spustenie:** aplikácia nie je podpísaná certifikátom Apple Developer, preto ju macOS najprv zablokuje. Otvor **Systémové nastavenia → Súkromie a bezpečnosť**, nájdi hlášku o aplikácii HLBINA a povoľ ju tlačidlom **Open Anyway** (v slovenčine „Napriek tomu otvoriť“). Stačí raz.
+
+Aplikácia má vlastné uložené hry, oddelené od prehliadača.
+
+### Playtest
+
+`npm run playtest` pustí bota, ktorý hrá skutočnú simuláciu ako hráč: vŕta, predáva, kupuje, zbiera relikvie, zapáli Srdce a uteká. Vypíše pre každý svet časy prvého upgradu, pásiem a finále a nakoniec ciele balansu (§6). Hráč je podľa odhadu dvakrát pomalší než bot. `npm run playtest -- 2 4` odohrá 2 svety s limitom 4 hodiny.
 
 ## Debug nástroje
 
@@ -100,6 +149,6 @@ V dev režime sú zapnuté vždy. V produkčnom builde ich zapneš pridaním `?d
 
 ## Štruktúra
 
-Priečinky zodpovedajú GAME_SPEC.md §9. Logika (`core/`, `data/`, `world/`, `sim/`, `story/`, `save/`) nesmie importovať Three.js ani používať `Math.random`. Stráži to ESLint.
+Priečinky zodpovedajú GAME_SPEC.md §9. Logika (`core/`, `data/`, `world/`, `sim/`, `story/`, `save/`) nesmie importovať Three.js ani používať `Math.random`. Stráži to ESLint. Skripty (ekonomika, playtest, zip pre itch.io) sú v `scripts/`, natívna aplikácia v `src-tauri/`.
 
 Rozhodnutia, ktoré špecifikácia nechala otvorené, sú v [DECISIONS.md](DECISIONS.md). Licencie sú v [CREDITS.md](CREDITS.md).

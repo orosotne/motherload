@@ -108,6 +108,11 @@ export const FINALE = {
   slackPerFailure: 15,
   /** Seconds before the lava starts rising. */
   graceSeconds: 5,
+  /**
+   * How the lava speeds up: its share of the way is (time share)^this. Above 1 it starts slow,
+   * while the pod finds its way out of the chamber, and still reaches the top on time.
+   */
+  lavaEase: 1.6,
   /** Row the lava starts from, below the world. */
   lavaStartRow: WORLD.height + 6,
   /** Seconds between collapses that open new ways up during the escape. */

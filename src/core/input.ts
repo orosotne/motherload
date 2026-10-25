@@ -38,9 +38,11 @@ export class Input {
   private readonly heldKeys = new Set<string>();
   private readonly pressedSinceSample = new Set<Action>();
   private readonly menuCommands = new Set<MenuCommand>();
+  private keymap: Readonly<Record<string, Action>>;
 
-  constructor(source: EventTarget, pad = new GamepadReader()) {
+  constructor(source: EventTarget, pad = new GamepadReader(), keymap = KEYBOARD) {
     this.pad = pad;
+    this.keymap = keymap;
     source.addEventListener('keydown', (event) => this.onKey(event as KeyboardEvent, true));
     source.addEventListener('keyup', (event) => this.onKey(event as KeyboardEvent, false));
     // A key released while the window had no focus never sends keyup (Cmd+Tab on a Mac).
@@ -53,7 +55,7 @@ export class Input {
     for (const command of pad.menu) this.menuCommands.add(command);
     const held = new Set<Action>(pad.held);
     for (const code of this.heldKeys) {
-      const action = KEYBOARD[code];
+      const action = this.keymap[code];
       if (action) held.add(action);
     }
     const frame: InputFrame = {
@@ -77,6 +79,11 @@ export class Input {
     this.heldKeys.clear();
   }
 
+  /** Another keyboard layout, e.g. after the player chose new keys in the settings. */
+  setKeymap(keymap: Readonly<Record<string, Action>>): void {
+    this.keymap = keymap;
+  }
+
   /** Forgets presses not yet sampled, e.g. the key that just closed a menu. */
   clearPresses(): void {
     this.pressedSinceSample.clear();
@@ -84,7 +91,7 @@ export class Input {
   }
 
   private onKey(event: KeyboardEvent, down: boolean): void {
-    const action = KEYBOARD[event.code];
+    const action = this.keymap[event.code];
     if (!action) return;
     const editable = isEditable(event.target);
     // Arrows and space would otherwise scroll the page or press a focused button.

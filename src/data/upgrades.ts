@@ -31,6 +31,7 @@ export const UPGRADE_VALUES: Readonly<Record<UpgradeBranch, readonly number[]>> 
 
 /**
  * Price of each tier, the same in every branch; tiers are bought in order (§6). Tuned with
- * `npm run sim:economy` from the spec's 500 / 1 500 / 4 000 / 10 000 / 25 000 (DECISIONS.md).
+ * `npm run sim:economy` and `npm run playtest` from the spec's 500 / 1 500 / 4 000 / 10 000 /
+ * 25 000 (DECISIONS.md).
  */
-export const TIER_PRICES: readonly number[] = [0, 500, 3000, 20000, 65000, 200000];
+export const TIER_PRICES: readonly number[] = [0, 500, 4000, 20000, 45000, 130000];

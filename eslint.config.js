@@ -14,7 +14,7 @@ const LOGIC = [
 ];
 
 export default defineConfig([
-  globalIgnores(['dist/', 'coverage/']),
+  globalIgnores(['dist/', 'coverage/', 'release/', 'src-tauri/target/', 'src-tauri/gen/']),
   {
     files: ['**/*.{js,ts}'],
     extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],

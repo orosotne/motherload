@@ -20,24 +20,33 @@ export const ACTIONS = [
 
 export type Action = (typeof ACTIONS)[number];
 
+/** Actions the player may put on keys of their choice in the settings (F6). */
+export const REBINDABLE = ['left', 'right', 'up', 'down', 'use', 'enter', 'skip'] as const;
+
+export type Rebindable = (typeof REBINDABLE)[number];
+
 /**
- * Keyboard layout by physical key (`KeyboardEvent.code`), so it works the same on QWERTY and the
- * Slovak QWERTZ layout (§5).
+ * The chosen key of each rebindable action, by physical key (`KeyboardEvent.code`), so it works
+ * the same on QWERTY and the Slovak QWERTZ layout (§5).
  */
-export const KEYBOARD: Readonly<Record<string, Action>> = {
-  KeyA: 'left',
+export const DEFAULT_KEYS: Readonly<Record<Rebindable, string>> = {
+  left: 'KeyA',
+  right: 'KeyD',
+  up: 'KeyW',
+  down: 'KeyS',
+  use: 'KeyF',
+  enter: 'KeyE',
+  skip: 'Enter',
+};
+
+/** Keys that always work, whatever was chosen: arrows, space, Esc and the slot numbers. */
+export const FIXED_KEYS: Readonly<Record<string, Action>> = {
   ArrowLeft: 'left',
-  KeyD: 'right',
   ArrowRight: 'right',
-  KeyW: 'up',
   ArrowUp: 'up',
   Space: 'up',
-  KeyS: 'down',
   ArrowDown: 'down',
-  KeyF: 'use',
-  KeyE: 'enter',
   Escape: 'pause',
-  Enter: 'skip',
   NumpadEnter: 'skip',
   Digit1: 'slot1',
   Digit2: 'slot2',
@@ -45,6 +54,18 @@ export const KEYBOARD: Readonly<Record<string, Action>> = {
   Digit4: 'slot4',
   Digit5: 'slot5',
 };
+
+/** The keyboard layout: the fixed keys plus the chosen ones (§5). */
+export function keyboardMap(
+  chosen: Readonly<Record<Rebindable, string>> = DEFAULT_KEYS,
+): Readonly<Record<string, Action>> {
+  const map: Record<string, Action> = { ...FIXED_KEYS };
+  for (const action of REBINDABLE) map[chosen[action]] = action;
+  return map;
+}
+
+/** The default keyboard layout. */
+export const KEYBOARD = keyboardMap();
 
 /** Gamepad buttons in the standard mapping (§5) and the actions they trigger in play. */
 export const GAMEPAD_BUTTONS: Readonly<Record<number, Action>> = {

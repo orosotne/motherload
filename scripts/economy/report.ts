@@ -11,7 +11,11 @@ function minutes(value: number | null | undefined): string {
   return value === null || value === undefined ? 'never' : `${value.toFixed(1)} min`;
 }
 
-/** The §6 balance targets, checked against a simulated game. */
+/**
+ * The §6 targets of the early game, checked against a game played by the model. The finale and
+ * the rhythm of purchases are the playtest's (scripts/playtest/report.ts): the model mines band
+ * averages and runs dry once the bands it knows are used up, the bot finds the ore that is left.
+ */
 export function checkTargets(timeline: Timeline): TargetCheck[] {
   const targets = BALANCE_TARGETS;
   const first = timeline.firstUpgrade;
@@ -35,19 +39,5 @@ export function checkTargets(timeline: Timeline): TargetCheck[] {
       detail: minutes(reached),
     });
   }
-  const [earliest, latest] = targets.finaleMinutes;
-  checks.push({
-    name: `finale after ${earliest / 60}–${latest / 60} h`,
-    ok:
-      timeline.finaleMinutes !== null &&
-      timeline.finaleMinutes >= earliest &&
-      timeline.finaleMinutes <= latest,
-    detail: minutes(timeline.finaleMinutes),
-  });
-  checks.push({
-    name: `at most ${targets.maxTripsPerPurchase} trips before the next purchase`,
-    ok: timeline.maxTripsPerPurchase <= targets.maxTripsPerPurchase,
-    detail: `${timeline.maxTripsPerPurchase} at most`,
-  });
   return checks;
 }

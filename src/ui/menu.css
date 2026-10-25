@@ -1,0 +1,87 @@
+/* The title screen and the menus around it (GAME_SPEC F6). */
+
+/* On the title screen only the world shows, not the game's HUD. */
+#ui:has(> .panel-backdrop.is-title) :is(.hud, .prompt, .radio, .escape, .toasts) {
+  visibility: hidden;
+}
+
+/* The world stays visible on the right; the menu sits on a soft shade on the left. */
+.panel-backdrop.is-title {
+  justify-items: start;
+  padding-left: max(32px, 7vw);
+  background: linear-gradient(
+    90deg,
+    rgb(10 6 16 / 78%) 0%,
+    rgb(10 6 16 / 45%) 42%,
+    rgb(10 6 16 / 0%) 72%
+  );
+}
+
+.panel.is-title {
+  width: min(420px, 100%);
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.panel.is-title .panel-head {
+  padding: 0 0 22px;
+  color: var(--ui-text);
+}
+
+.panel.is-title h1 {
+  margin: 0;
+  font-size: clamp(56px, 9vw, 96px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--ui-gold);
+  text-shadow:
+    0 5px 0 #8a4b14,
+    0 12px 28px rgb(0 0 0 / 45%);
+}
+
+.panel.is-title .panel-line {
+  margin-top: 12px;
+  font-size: 20px;
+}
+
+.panel.is-title .panel-body {
+  padding: 0;
+}
+
+.panel.is-title .panel-action {
+  background: rgb(29 22 38 / 78%);
+}
+
+.title-version {
+  order: 9;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
+/* A seed for a new game: typed, so the text can be selected. */
+.seed-field {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+
+.seed-field input {
+  padding: 10px 14px;
+  border: 2px solid var(--ui-line);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 20px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.seed-field input:focus {
+  outline: 3px solid var(--ui-gold);
+  outline-offset: 2px;
+}

@@ -175,10 +175,10 @@ export function stepEscape(
   if (!finale || finale.phase !== 'escape') return;
   finale.escaped += dt;
   finale.left = Math.max(finale.duration - finale.escaped, 0);
-  // Straight up from below the world to the surface, in the time the escape has.
+  // From below the world to the surface in the time the escape has, slow at first.
   const rising = Math.max(finale.escaped - FINALE.graceSeconds, 0);
   const share = Math.min(rising / (finale.duration - FINALE.graceSeconds), 1);
-  finale.lavaRow = FINALE.lavaStartRow * (1 - share);
+  finale.lavaRow = FINALE.lavaStartRow * (1 - share ** FINALE.lavaEase);
   finale.nextCollapse -= dt;
   if (finale.nextCollapse <= 0) {
     finale.nextCollapse = FINALE.collapseSeconds;

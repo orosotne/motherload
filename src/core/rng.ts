@@ -60,3 +60,13 @@ export function seedFromText(text: string): number {
   }
   return h >>> 0;
 }
+
+/**
+ * A seed as the player types it for a new game: a number, as the game shows it, is that very
+ * world; any other text is hashed, so "tumbra" is always the same world too.
+ */
+export function parseSeed(text: string): number {
+  const trimmed = text.trim();
+  if (/^\d{1,10}$/.test(trimmed) && Number(trimmed) < UINT32_RANGE) return Number(trimmed);
+  return seedFromText(trimmed);
+}

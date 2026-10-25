@@ -1,7 +1,7 @@
 {
   "name": "hlbina",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "HLBINA: a 2.5D dig, sell and upgrade game.",
   "type": "module",
   "engines": {
@@ -18,7 +18,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
-    "sim:economy": "vite build --ssr scripts/simEconomy.ts --outDir node_modules/.cache/sim-economy --emptyOutDir --logLevel warn && node node_modules/.cache/sim-economy/simEconomy.js"
+    "sim:economy": "vite build --ssr scripts/simEconomy.ts --outDir node_modules/.cache/sim-economy --emptyOutDir --logLevel warn && node node_modules/.cache/sim-economy/simEconomy.js",
+    "playtest": "vite build --ssr scripts/playtest.ts --outDir node_modules/.cache/playtest --emptyOutDir --logLevel warn && node node_modules/.cache/playtest/playtest.js",
+    "pack:web": "npm run build && vite build --ssr scripts/packWeb.ts --outDir node_modules/.cache/pack-web --emptyOutDir --logLevel warn && node node_modules/.cache/pack-web/packWeb.js",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build"
   },
   "dependencies": {
     "lil-gui": "^0.21.0",
@@ -27,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.12.2",
     "@types/three": "^0.186.0",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",

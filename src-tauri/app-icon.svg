@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- HLBINA app icon: the pod drilling down through the five zones to the Heart (GAME_SPEC §8). -->
+  <defs>
+    <clipPath id="tile">
+      <rect x="100" y="100" width="824" height="824" rx="184" />
+    </clipPath>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#FFD166" stop-opacity="0.9" />
+      <stop offset="0.45" stop-color="#FFB347" stop-opacity="0.45" />
+      <stop offset="1" stop-color="#9D4EDD" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect x="100" y="100" width="824" height="270" fill="#8FD3FF" />
+    <rect x="100" y="370" width="824" height="130" fill="#E8A15A" />
+    <rect x="100" y="370" width="824" height="16" fill="#C9733A" />
+    <rect x="100" y="500" width="824" height="110" fill="#B5654A" />
+    <rect x="100" y="610" width="824" height="110" fill="#1E2A4A" />
+    <rect x="100" y="720" width="824" height="80" fill="#1A1A1F" />
+    <rect x="100" y="800" width="824" height="124" fill="#2B1640" />
+    <ellipse cx="780" cy="790" rx="96" ry="22" fill="#FF6B1A" />
+    <ellipse cx="780" cy="786" rx="60" ry="10" fill="#FFB347" />
+    <rect x="232" y="428" width="44" height="44" rx="10" fill="#D2643C" />
+    <path d="M760 520 l34 40 -34 40 -34 -40 z" fill="#3F7FE0" />
+    <path d="M246 640 l40 46 -40 46 -40 -46 z" fill="#2EC4B6" />
+    <path d="M246 640 l40 46 -40 0 z" fill="#9BF6FF" />
+    <rect x="462" y="460" width="100" height="400" fill="#000" fill-opacity="0.35" />
+    <circle cx="512" cy="850" r="190" fill="url(#glow)" />
+    <circle cx="512" cy="850" r="62" fill="#FFD166" />
+    <circle cx="496" cy="834" r="24" fill="#FFF4D6" />
+  </g>
+  <g stroke="#3A3340" stroke-width="14" stroke-linejoin="round">
+    <path d="M447 384 h130 l-65 96 z" fill="#B7C9D9" />
+    <path d="M468 414 l64 0 M482 444 l40 0" stroke-width="10" fill="none" />
+    <rect x="392" y="226" width="240" height="160" rx="52" fill="#F4F1DE" />
+    <rect x="442" y="254" width="140" height="74" rx="32" fill="#9BF6FF" />
+  </g>
+  <ellipse cx="482" cy="276" rx="22" ry="10" fill="#FFFFFF" fill-opacity="0.8" />
+  <circle cx="606" cy="352" r="14" fill="#FFE9A8" />
+</svg>

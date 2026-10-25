@@ -21,7 +21,10 @@ export interface MineralConfig {
   shape: CrystalShape;
 }
 
-/** GAME_SPEC §6. Main zones are a design decision (DECISIONS.md). */
+/**
+ * GAME_SPEC §6. Main zones are a design decision; each mineral is worth twice the one before,
+ * tuned with the playtest (DECISIONS.md).
+ */
 export const MINERALS: readonly MineralConfig[] = [
   {
     id: 1,
@@ -46,7 +49,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 3,
     key: 'mineral.glimmerite',
-    value: 90,
+    value: 100,
     zones: [2, 3],
     mainZone: 2,
     density: 0.04,
@@ -66,7 +69,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 5,
     key: 'mineral.skyquartz',
-    value: 350,
+    value: 400,
     zones: [3, 4],
     mainZone: 3,
     density: 0.025,
@@ -76,7 +79,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 6,
     key: 'mineral.emberstone',
-    value: 600,
+    value: 800,
     zones: [4, 5],
     mainZone: 4,
     density: 0.02,
@@ -86,7 +89,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 7,
     key: 'mineral.voidglass',
-    value: 1200,
+    value: 1600,
     zones: [4, 5],
     mainZone: 4,
     density: 0.012,
@@ -96,7 +99,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 8,
     key: 'mineral.starheart',
-    value: 2500,
+    value: 3200,
     zones: [5],
     mainZone: 5,
     density: 0.008,
@@ -106,7 +109,7 @@ export const MINERALS: readonly MineralConfig[] = [
   {
     id: 9,
     key: 'mineral.corePearl',
-    value: 5000,
+    value: 6400,
     zones: [5],
     mainZone: 5,
     density: 0.003,

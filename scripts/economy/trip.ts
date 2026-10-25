@@ -70,7 +70,8 @@ export function planTrip(
   if (budget <= 0 || hullLeft <= 0) return null;
 
   const targeting = 1 + (BALANCE.targeting - 1) * visibility(band, stats.lightRange);
-  const yieldPerBlock = Math.min(1, band.oreShare * targeting);
+  // A band runs out: what earlier trips took is not there any more.
+  const yieldPerBlock = Math.min(1, band.oreShare * band.left * targeting);
   if (yieldPerBlock <= 0) return null;
   const drilling = (band.hardness + ORE_BONUS * yieldPerBlock) * stats.drillSecondsPerHardness;
   const blockSeconds = drilling + BALANCE.moveSecondsPerBlock;
@@ -81,6 +82,8 @@ export function planTrip(
     stats.cargoCapacity / yieldPerBlock,
     budget / blockLiters,
     blockDamage > 0 ? hullLeft / blockDamage : Infinity,
+    // Never more ore than the band still holds.
+    (band.oreUnits * band.left) / yieldPerBlock,
   );
   const units = Math.floor(blocks * yieldPerBlock + 1e-9);
   if (units <= 0) return null;

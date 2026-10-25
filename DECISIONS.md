@@ -249,3 +249,49 @@ Malé rozhodnutia, ktoré GAME_SPEC.md nechala otvorené (§11.7). Väčšie zme
 ### Ukladanie
 
 - **Schéma 2** pridáva príbeh: odohrané správy, zemetrasenia a koniec. Hra uložená vo verzii 1 dostane príbeh podľa toho, čo už prežila: úvod, pásma, ktoré dosiahla, a nájdené relikvie sa už neozvú a zemetrasenia sa neopakujú.
+
+## F6 Vydanie (2026-10-25)
+
+### Hlavné menu a nastavenia
+
+- **Titulná obrazovka** leží nad živým svetom: za menu je vidno stanicu a modul, HUD je skrytý. Esc ani B na nej nič nerobia, je to koreň menu.
+- **Pokračovať** ukáže hĺbku, peniaze a relikvie uloženej hry. Bez rozohranej hry je tam **Hrať**.
+- **Nová hra:** náhodný svet alebo seed. Číslo s najviac 10 číslicami pod 2^32 sa použije priamo, iný text sa zahašuje, takže aj slovo dá vždy ten istý svet. Rozohranú hru zmaže až druhé stlačenie. Nový svet sa spustí znovunačítaním stránky so seedom v `sessionStorage`, aby po starej hre nezostal žiadny stav.
+- **Nastavenia:** hlasitosti a jazyk ostali pod svojimi kľúčmi z F4 (`hlbina.audio`, `hlbina.lang`). Klávesy, vibrácie a trasenie pribudli pod `hlbina.prefs`. Všetko je oddelené od uloženej hry, takže nová hra nastavenia nezmaže.
+- **Pauza** má namiesto hlasitosti a jazyka tlačidlo Nastavenia, ktoré otvorí to isté ako titulná obrazovka, a pribudlo Hlavné menu. Odchod do menu hru uloží.
+- **Vlastné klávesy:**
+  - Meniť sa dá 7 akcií: jazda doľava a doprava, let, vŕtanie dole, vybavenie, vstup a preskočenie rádia.
+  - Šípky, medzerník, Esc, Num Enter a 1 až 5 platia vždy a obsadiť sa nedajú, takže zlé nastavenie z hry nikdy nezamkne.
+  - Tab, Cmd, Caps Lock, F-klávesy a podobné patria systému.
+  - Keď má kláves iná akcia, akcie si klávesy vymenia, aby každá mala vlastný.
+  - Nápoveda v pauze a výzvy v HUD ukazujú zvolené klávesy.
+- **Autori:** námet a zadanie, vznik v kóde s Claude Code, knižnice a písmo s licenciami.
+
+### Balans po playteste (`npm run playtest`)
+
+- **Playtest hrá bot na skutočnej simulácii** cez rovnaké ovládanie ako hráč: lieta, vŕta, predáva, kupuje, zbiera relikvie, zapáli Srdce a uteká. Vidí celú mriežku, inak nie je múdrejší. `npm run playtest` odohrá 6 svetov a porovná ich s cieľmi §6. Test `tests/playtest.test.ts` pri každej kontrole odohrá 3.
+- **Hráč je dvakrát pomalší než bot** (`BALANCE.playerSlowdown`). Bot nezablúdi, nezmešká pristátie, nečíta rádio a nič nehľadá. Je to odhad, kým hru nehrajú ľudia. Keď ukážu iný pomer, stačí zmeniť toto číslo a podľa playtestu doladiť ceny.
+- **Svet je konečný:** vyťažená ruda nedorastie. Model ekonomiky preto dostal ubúdanie rudy v pásmach. Neskorú hru však nedohrá: ťaží priemery pásiem, a keď ich vyčerpá, nemá kam ísť, zatiaľ čo bot nájde rudu, ktorá ostala. Model teda stráži začiatok hry (prvý upgrade, pásma 2 až 4) a bot finále a rytmus nákupov.
+- **Hodnoty zo špecifikácie:** bot došiel do finále za 29 min, hráč by to zvládol asi za hodinu. Svet mal rudu za viac než $1,3 milióna.
+- **Hodnoty z F3:** bot došiel do finále za 129 až 182 min (hráč 4,3 až 6 h) a medzi upgradmi bolo až 8 výletov, čo §6 považuje za chybu balansu.
+- **Nové hodnoty minerálov:** každý minerál má dvojnásobnú cenu oproti predchádzajúcemu: Rustite $25, Cobaltine $50, Glimmerite $100, Aurelite $200, Skyquartz $400, Emberstone $800, Voidglass $1 600, Starheart $3 200, Core Pearl $6 400.
+- **Nové ceny tierov:** T2 $500, T3 $4 000, T4 $20 000, T5 $45 000, T6 $130 000.
+- **Výsledok:** bot dohral všetkých 6 svetov za 96 až 137 min, priemerne za 108 min, čo je pre hráča asi 3,6 h. Medzi upgradmi sú najviac 4 výlety. Útek z jadra prehral bot raz za hru. Minul $217 000 a v zemi ostalo $300 000 až $390 000 (svet má $506 000 až $598 000), takže ani menej šikovný hráč neostane bez peňazí na to, čo finále potrebuje.
+- **Model:** prvý upgrade po 2 výletoch (3,8 min), pásmo 2 za 6,5 min, pásmo 3 za 23 min, pásmo 4 za 59 min.
+- **T6 je pre voľné ťaženie po konci.** Finále žiadny T6 nepotrebuje (bot ide s motorom T4, chladením T5 a trupom T4) a všetky T6 spolu by stáli viac, než svet obsahuje.
+- **Láva pri úteku sa rozbieha pomaly** (`FINALE.lavaEase` 1,6): jej podiel cesty je podiel času umocnený na 1,6. Pri rovnomernom stúpaní bot prehrával útek ešte v kľukatej šachte pri komore. Na povrch láva dorazí v rovnaký čas ako predtým.
+- **Hitstop a záblesk** sú od $400, teda znova pre päť najcennejších minerálov.
+
+### Vydanie
+
+- **Verzia 1.0.0** je v `package.json`. Odtiaľ ju berie titulná obrazovka aj aplikácia pre macOS (`tauri.conf.json` ukazuje na `package.json`).
+- **itch.io:** `npm run pack:web` zbalí `dist/` do `release/hlbina-<verzia>-web.zip` s `index.html` v koreni. Zip píše vlastný malý skript nad zlib z Node, bez novej závislosti, s pevnými časmi súborov, aby ten istý build dal vždy ten istý zip. Odmietne build s absolútnymi cestami (itch.io hru servíruje z podpriečinka) a build nad 2 MB (§10). Dnes má 244 kB.
+- **macOS:** natívna aplikácia je Tauri 2 (`src-tauri/`), jediná povolená nová závislosť F6. Je to len okno s web buildom, bez vlastných príkazov a oprávnení:
+  - okno 1280 × 800 (najmenej 960 × 600), čierne pozadie, aby pri štarte nebliklo bielou;
+  - prísna CSP: hra nepotrebuje nič mimo vlastných súborov;
+  - uložené hry sú v local storage web view, oddelene od prehliadača;
+  - ad-hoc podpis (`signingIdentity: "-"`), bez ktorého Apple Silicon aplikáciu nespustí. Podpis Apple Developer a notarizácia potrebujú platený účet, preto README opisuje prvé spustenie cez Súkromie a bezpečnosť;
+  - najnižší macOS 11: s aktualizovaným Safari má jeho WebKit WebGL 2, ktorý three.js potrebuje.
+- **Ikona aplikácie** je nakreslená v `src-tauri/app-icon.svg` (modul vŕta šachtu cez päť pásiem k žiariacemu Srdcu) a `tauri icon` z nej vyrobil ikony pre macOS, Windows a Linux. Ikony pre mobily a Windows Store sú zmazané.
+- **Build pre macOS** sa nedá urobiť na Linuxe. Workflow `macOS app` ho postaví na runneri macOS ako univerzálnu aplikáciu (Apple Silicon aj Intel), overí, že sa spustí a beží 20 s, a `.dmg` nechá ako artefakt. Beží ručne, pri tagu `v*` a pri PR, ktorý mení `src-tauri/`. Repozitár je verejný, takže minúty macOS sú zadarmo.
+- **Overenie tu:** linuxový build tej istej aplikácie (WebKitGTK) spustí hru v okne a v Chromiu s rovnakou CSP hra beží bez chyby či varovania v konzole.

@@ -21,6 +21,10 @@ export interface Band {
   valuePerOre: number;
   /** Gas pockets per drillable block. */
   gasShare: number;
+  /** Ore blocks in the band of one world. */
+  oreUnits: number;
+  /** Share of the band's ore not mined yet: trips use it up (1 at the start). */
+  left: number;
 }
 
 /** Splits the world into bands of BALANCE.bandRows rows and measures each over a few seeds. */
@@ -58,6 +62,8 @@ export function measureBands(seeds = BALANCE.seeds): Band[] {
       oreShare: drillable > 0 ? ore / drillable : 0,
       valuePerOre: ore > 0 ? value / ore : 0,
       gasShare: drillable > 0 ? gas / drillable : 0,
+      oreUnits: ore / seeds,
+      left: 1,
     });
   }
   return bands;
