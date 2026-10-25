@@ -1,48 +1,34 @@
-import type { AudioEngine } from '../audio/engine';
-import type { AudioVolumes } from '../data/audio';
-import { getLanguage, setLanguage, t, type TextKey } from '../i18n';
-import type { PanelAction, PanelView } from './panel';
-
-const STEPS = [0, 0.25, 0.5, 0.75, 1];
-
-/** The next volume step, wrapping from 100 % back to 0. */
-function nextStep(value: number): number {
-  const index = STEPS.findIndex((step) => step > value + 0.01);
-  return index < 0 ? 0 : (STEPS[index] ?? 0);
-}
-
-function percent(value: number): string {
-  return `${Math.round(value * 100)} %`;
-}
+import { REBINDABLE, type Rebindable } from '../data/controls';
+import { t } from '../i18n';
+import type { PanelView } from './panel';
+import { keyLabel } from './settingsMenu';
 
 export interface PauseActions {
   resume: () => void;
   /** The Album of relics (§7). */
   album: () => void;
-  /** A new world with a new seed; asks twice, since this game is wiped. */
-  newGame: () => void;
+  settings: () => void;
+  /** Back to the title screen, the game saved. */
+  mainMenu: () => void;
 }
 
 /**
- * The pause menu (Esc or Start, §5): continue, the Album, the volume mixer (§8), the language,
- * a new game and a reminder of the controls. It is a panel, so the keyboard and the gamepad
- * work in it the same way.
+ * The pause menu (Esc or Start, §5): continue, the Album, the settings and the title screen,
+ * with the world's seed to share and a reminder of the controls as chosen. It is a panel, so
+ * the keyboard and the gamepad work in it the same way.
  */
 export function pauseView(
-  audio: AudioEngine,
+  seed: number,
+  keys: Readonly<Record<Rebindable, string>>,
   actions: PauseActions,
-  confirm: { armed: boolean },
 ): PanelView {
-  const volume = (channel: keyof AudioVolumes, key: TextKey): PanelAction => ({
-    label: t(key),
-    detail: percent(audio.volumes[channel]),
-    run: () => audio.setVolume(channel, nextStep(audio.volumes[channel])),
-  });
+  const labels: Record<string, string> = {};
+  for (const action of REBINDABLE) labels[action] = keyLabel(keys[action]);
   const help = document.createElement('div');
   help.className = 'pause-help';
-  for (const key of ['pause.keys', 'pause.pad'] as const) {
+  for (const text of [t('pause.seed', { seed }), t('pause.keys', labels), t('pause.pad')]) {
     const line = document.createElement('p');
-    line.textContent = t(key);
+    line.textContent = text;
     help.append(line);
   }
   return {
@@ -51,26 +37,12 @@ export function pauseView(
     line: t('pause.line'),
     body: help,
     noClose: true,
-    note: confirm.armed ? t('newGame.confirm') : '',
+    back: actions.resume,
     actions: [
       { label: t('pause.continue'), run: actions.resume },
       { label: t('pause.album'), run: actions.album },
-      volume('master', 'pause.master'),
-      volume('music', 'pause.music'),
-      volume('sfx', 'pause.sfx'),
-      {
-        label: t('pause.language'),
-        detail: t('pause.languageName'),
-        run: () => setLanguage(getLanguage() === 'en' ? 'sk' : 'en'),
-      },
-      {
-        label: t('newGame.label'),
-        sub: t('newGame.sub'),
-        run: () => {
-          if (confirm.armed) actions.newGame();
-          confirm.armed = true;
-        },
-      },
+      { label: t('pause.settings'), run: actions.settings },
+      { label: t('pause.mainMenu'), run: actions.mainMenu },
     ],
   };
 }

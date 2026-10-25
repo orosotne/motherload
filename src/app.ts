@@ -2,13 +2,13 @@ import { GameAudio } from './audio/gameAudio';
 import { EventBus } from './core/events';
 import { Input } from './core/input';
 import { GameLoop } from './core/loop';
-import type { BuildingId } from './data/buildings';
 import { Block } from './data/blocks';
 import { mineralById } from './data/minerals';
 import { HEART } from './data/story';
 import { money } from './i18n';
 import { WORLD } from './data/world';
 import { GameView } from './render/view';
+import { readPrefs } from './save/prefs';
 import { newGame, restore, serialize, settled } from './save/save';
 import { clearSave, readSave, writeSave, type SaveStorage } from './save/storage';
 import { buildingAt } from './sim/buildings';
@@ -16,28 +16,26 @@ import type { GameEvents } from './sim/events';
 import { defaultSettings, stepGame } from './sim/game';
 import { createPod } from './sim/pod';
 import { StoryDirector } from './story/director';
-import { abandonFinale, escapeSeconds } from './story/finale';
-import { albumView } from './ui/album';
 import type { DebugTools } from './ui/debug/debugPanel';
-import { endingView } from './ui/ending';
 import { EscapeTimer } from './ui/escapeTimer';
 import { Fade } from './ui/fade';
 import { HeatGlow } from './ui/heatGlow';
 import { Hud } from './ui/hud';
+import { applyPrefs, Menus } from './ui/menus';
 import { showNotices } from './ui/notices';
 import { PanelHost } from './ui/panel';
-import { pauseView } from './ui/pauseMenu';
+import { keyLabel } from './ui/settingsMenu';
 import { Popups } from './ui/popups';
 import { Radio } from './ui/radio';
-import { retryView } from './ui/retry';
 import { Rumble } from './ui/rumble';
-import { shopView } from './ui/shops';
 import { Toasts } from './ui/toasts';
 
 /** Seconds of play between autosaves. */
 const AUTOSAVE_SECONDS = 10;
 /** Seconds of celebration on the surface before the ending opens (§7). */
 const ENDING_DELAY_SECONDS = 2.5;
+/** sessionStorage: the seed of a new game, chosen just before the reload that starts it. */
+const NEW_GAME_KEY = 'hlbina.newGame';
 
 /** Debug tools: always in dev mode; in a production build with ?debug, or #debug where the
  * query string never reaches the page (the claude.ai preview). */
@@ -59,19 +57,37 @@ function browserStorage(): SaveStorage | null {
   }
 }
 
+/** A random seed for a new world; from then on everything is deterministic (§4). */
+function randomSeed(): number {
+  return Math.floor(Math.random() * 2 ** 32);
+}
+
+/** The seed of a new game chosen before the page reloaded, taken only once. */
+function takeNewGameSeed(): number | null {
+  try {
+    const text = window.sessionStorage.getItem(NEW_GAME_KEY);
+    window.sessionStorage.removeItem(NEW_GAME_KEY);
+    return text !== null && /^\d{1,10}$/.test(text) ? Number(text) >>> 0 : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Wires simulation, saves, input, view, UI and the game loop together. */
 export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   const settings = defaultSettings();
   const storage = browserStorage();
-  const saved = storage ? readSave(storage) : null;
-  // A new world gets a random seed; from then on everything is deterministic (§4).
+  const chosenSeed = takeNewGameSeed();
+  const saved = storage && chosenSeed === null ? readSave(storage) : null;
   const { state, baseline } = saved
     ? restore(saved, settings)
-    : newGame(Math.floor(Math.random() * 2 ** 32), settings);
+    : newGame(chosenSeed ?? randomSeed(), settings);
   const events = new EventBus<GameEvents>();
   const input = new Input(window);
+  const prefs = readPrefs(storage);
+  applyPrefs(prefs, settings, input);
   const view = new GameView(canvas, state, settings, events);
-  const hud = new Hud(ui);
+  const hud = new Hud(ui, () => keyLabel(prefs.keys.enter));
   const heatGlow = new HeatGlow(ui);
   const fade = new Fade(ui, events);
   const audio = new GameAudio(state, settings, events);
@@ -96,11 +112,16 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     if (!storage || !keepSaving || state.finale) return;
     writeSave(serialize(settled(state, settings.pod.halfSize), baseline), storage);
   };
-  // A new world from a new seed (§7): this game must not come back, not even from leaving the
-  // page, which saves.
-  const startNewGame = (): void => {
+  // A new world (§7, F6): this game must not come back, not even from leaving the page, which
+  // saves. The reload picks the seed up and starts right away.
+  const startNewGame = (seed: number): void => {
     keepSaving = false;
     if (storage) clearSave(storage);
+    try {
+      window.sessionStorage.setItem(NEW_GAME_KEY, String(seed >>> 0));
+    } catch {
+      // Without sessionStorage the reload makes a random world instead.
+    }
     window.location.reload();
   };
   let sinceSave = 0;
@@ -110,41 +131,20 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
     if (document.visibilityState === 'hidden') save();
   });
 
-  const afterPanel = (): void => {
-    // The key that closes the panel must not count as a game press afterwards.
-    input.clearPresses();
-    save();
-  };
-  const openAlbum = (): void => {
-    const note = { text: '' };
-    panels.open(() => albumView(state, note), afterPanel);
-  };
-  const openPause = (): void => {
-    const confirm = { armed: false };
-    const actions = { resume: () => panels.close(), album: openAlbum, newGame: startNewGame };
-    panels.open(() => pauseView(audio.engine, actions, confirm), afterPanel);
-  };
-  const openShop = (id: BuildingId): void => {
-    const note = { text: '' };
-    panels.open(() => shopView(id, { state, events, note, openAlbum }), afterPanel);
-  };
-  const openEnding = (): void => {
-    const confirm = { armed: false };
-    const actions = { keepMining: () => panels.close(), newGame: startNewGame };
-    panels.open(() => endingView(state, actions, confirm), afterPanel);
-  };
-  // After the lava wins: another try, or a free tow home (pillar 4).
-  events.on('EscapeFailed', ({ attempts }) => {
-    const next = { attempt: attempts + 1, seconds: escapeSeconds(attempts + 1) };
-    const actions = {
-      again: () => panels.close(),
-      giveUp: () => {
-        abandonFinale(state, settings.pod.halfSize, events);
-        panels.close();
-      },
-    };
-    panels.open(() => retryView(next, actions), afterPanel);
+  const menus = new Menus({
+    panels,
+    state,
+    events,
+    audio: audio.engine,
+    settings,
+    input,
+    prefs,
+    storage,
+    save,
+    newGame: startNewGame,
+    randomSeed,
   });
+  events.on('EscapeFailed', ({ attempts }) => menus.retry(attempts));
   // The ending, after a moment of fireworks; finding the last relic later shows the epilogue.
   let endingIn = Infinity;
   events.on('FinaleWon', () => {
@@ -172,19 +172,19 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
         return;
       }
       if (frame.pressed.pause) {
-        openPause();
+        menus.pause();
         return;
       }
       if (frame.pressed.skip) radio.skip();
       endingIn -= dt;
       if (endingIn <= 0) {
         endingIn = Infinity;
-        openEnding();
+        menus.ending();
         return;
       }
       const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
       if (frame.pressed.enter && building) {
-        openShop(building.id);
+        menus.shop(building.id);
         return;
       }
       stepGame(state, frame, dt, settings, events);
@@ -210,6 +210,8 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
   // The director speaks through the radio from the first message on (§7).
   const director = new StoryDirector(state, events);
   director.start();
+  // The title screen opens every start, except right after a new game was chosen on it (F6).
+  if (chosenSeed === null) menus.title();
   loop.start();
 
   if (!debugRequested()) return;
@@ -235,7 +237,7 @@ export function startApp(canvas: HTMLCanvasElement, ui: HTMLElement): void {
           state.pod = createPod(col, row, settings.pod.halfSize);
           view.snapCamera();
         },
-        newGame: startNewGame,
+        newGame: () => startNewGame(randomSeed()),
       });
     })
     .catch((error: unknown) => console.error('Debug tools failed to load', error));

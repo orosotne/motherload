@@ -60,7 +60,11 @@ export class Hud {
   private readonly promptText: HTMLElement;
   private readonly shown = new Map<HTMLElement, string>();
 
-  constructor(parent: HTMLElement) {
+  constructor(
+    parent: HTMLElement,
+    /** The key that enters a building, as the player chose it (F6). */
+    private readonly enterKey: () => string = () => 'E',
+  ) {
     const root = element('div', 'hud', parent);
     this.fuel = gauge(root, 'fuel');
     this.hull = gauge(root, 'hull');
@@ -76,7 +80,6 @@ export class Hud {
 
     this.prompt = element('div', 'prompt', parent);
     this.promptKey = element('kbd', '', this.prompt);
-    this.promptKey.textContent = 'E';
     this.promptText = element('span', '', this.prompt);
     this.prompt.hidden = true;
 
@@ -118,11 +121,12 @@ export class Hud {
     this.updatePrompt(state);
   }
 
-  /** "E" and a building's name, or by the Heart what it needs to burn again (§7). */
+  /** The enter key and a building's name, or by the Heart what it needs to burn again (§7). */
   private updatePrompt(state: GameState): void {
     const building = state.status.kind === 'play' ? buildingAt(state.pod) : null;
     const heart = !building && nearHeart(state);
     this.prompt.hidden = !building && !heart;
+    this.write(this.promptKey, this.enterKey());
     if (building) {
       this.promptKey.hidden = false;
       this.write(this.promptText, t(building.key as TextKey));

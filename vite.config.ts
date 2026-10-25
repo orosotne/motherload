@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
+  // The version on the title screen.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // Relative asset URLs: the same build runs on itch.io, inside Tauri and from a sub-path.
   base: './',
   build: {

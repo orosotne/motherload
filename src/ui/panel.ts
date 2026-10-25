@@ -1,5 +1,6 @@
 import type { MenuCommand } from '../data/controls';
 import { t } from '../i18n';
+import { nextButton, type Direction } from './panelNav';
 
 export interface PanelAction {
   label: string;
@@ -13,6 +14,8 @@ export interface PanelAction {
   pips?: { filled: number; total: number };
   disabled?: boolean;
   run: () => void;
+  /** Left and right on the focused button change its value, like a slider. */
+  adjust?: (step: -1 | 1) => void;
 }
 
 export interface PanelView {
@@ -32,9 +35,14 @@ export interface PanelView {
   noClose?: boolean;
   /** Feedback on the last action. */
   note?: string;
+  /** The title screen: a big logo, no frame (F6). */
+  variant?: 'title';
+  /**
+   * What Esc, B or a click beside the panel do: close it (the default), go somewhere else
+   * instead, or nothing at all (null), e.g. on the title screen.
+   */
+  back?: (() => void) | null;
 }
-
-type Direction = 'up' | 'down' | 'left' | 'right';
 
 const DIRECTIONS: Readonly<Record<string, Direction>> = {
   ArrowUp: 'up',
@@ -58,16 +66,22 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+function isEditable(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+}
+
 /**
- * Modal panel for the shops (GAME_SPEC §8): big cards, focus moved with the arrows or WASD
- * to the nearest card in that direction (a D-pad does the same in F4), Enter or Space to choose,
- * Esc or E to close. The caller pauses the game while it is open.
+ * Modal panel for the shops and menus (GAME_SPEC §8): big cards, focus moved with the arrows or
+ * WASD to the nearest card in that direction (a D-pad does the same), Enter or Space to choose,
+ * Esc or E to go back. The caller pauses the game while it is open.
  */
 export class PanelHost {
   private backdrop: HTMLElement | null = null;
   private render: (() => PanelView) | null = null;
   private onClose: (() => void) | null = null;
   private buttons: HTMLButtonElement[] = [];
+  private actions: PanelAction[] = [];
+  private back: (() => void) | null = null;
   private focusIndex = 0;
 
   constructor(
@@ -89,7 +103,7 @@ export class PanelHost {
     this.focusIndex = 0;
     const backdrop = element('div', 'panel-backdrop');
     backdrop.addEventListener('pointerdown', (event) => {
-      if (event.target === backdrop) this.close();
+      if (event.target === backdrop) this.goBack();
     });
     this.backdrop = backdrop;
     this.parent.append(backdrop);
@@ -100,12 +114,15 @@ export class PanelHost {
   refresh(): void {
     if (!this.backdrop || !this.render) return;
     const view = this.render();
-    const panel = element('section', 'panel');
+    const title = view.variant === 'title';
+    this.back = view.back === undefined ? () => this.close() : view.back;
+    this.backdrop.classList.toggle('is-title', title);
+    const panel = element('section', title ? 'panel is-title' : 'panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
 
     const head = element('header', 'panel-head');
-    head.style.background = view.color;
+    if (!title) head.style.background = view.color;
     if (view.portrait) {
       const portrait = element('span', 'panel-portrait');
       // Static SVG from portraits.ts, never text from the game or the player.
@@ -113,7 +130,8 @@ export class PanelHost {
       head.append(portrait);
     }
     const titles = element('div', 'panel-titles');
-    titles.append(element('h2', '', view.title), element('p', 'panel-line', view.line));
+    titles.append(element(title ? 'h1' : 'h2', '', view.title));
+    titles.append(element('p', 'panel-line', view.line));
     head.append(titles);
 
     const body = element('div', 'panel-body');
@@ -121,10 +139,12 @@ export class PanelHost {
     const note = element('p', 'panel-note', view.note ?? '');
     const actions = element('div', `panel-actions${view.layout === 'grid' ? ' is-grid' : ''}`);
     const close = { label: t('panel.close'), run: () => this.close() };
-    const all = view.noClose ? view.actions : [...view.actions, close];
-    this.buttons = all.map((action, index) => this.button(action, index));
+    this.actions = view.noClose ? view.actions : [...view.actions, close];
+    this.buttons = this.actions.map((action, index) => this.button(action, index));
     actions.append(...this.buttons);
-    body.append(note, actions, element('p', 'panel-hint', t('panel.closeHint')));
+    body.append(note, actions);
+    const hint = view.back === undefined ? t('panel.closeHint') : t('panel.backHint');
+    if (this.back && !title) body.append(element('p', 'panel-hint', hint));
 
     panel.append(head, body);
     this.backdrop.replaceChildren(panel);
@@ -165,6 +185,8 @@ export class PanelHost {
       action.run();
       this.refresh();
     });
+    // Tab and the mouse move the focus too; Enter must choose what is focused.
+    button.addEventListener('focus', () => this.mark(index));
     return button;
   }
 
@@ -178,67 +200,52 @@ export class PanelHost {
   private focus(index: number): void {
     const enabled = this.buttons.filter((button) => !button.disabled);
     const target = this.buttons[index]?.disabled ? enabled[0] : this.buttons[index];
-    this.focusIndex = target ? this.buttons.indexOf(target) : 0;
-    this.buttons.forEach((button, i) =>
-      button.classList.toggle('is-focused', i === this.focusIndex),
-    );
+    this.mark(target ? this.buttons.indexOf(target) : 0);
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: 'nearest' });
   }
 
-  /** Moves the focus to the nearest enabled button in a direction, wrapping in lists. */
+  private mark(index: number): void {
+    this.focusIndex = index;
+    this.buttons.forEach((button, i) => button.classList.toggle('is-focused', i === index));
+  }
+
+  /** Moves the focus, or changes the value of a slider on left and right. */
   private move(direction: Direction): void {
-    const from = this.buttons[this.focusIndex]?.getBoundingClientRect();
-    if (!from) return;
-    const centre = (rect: DOMRect): [number, number] => [
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-    ];
-    const [fx, fy] = centre(from);
-    let best = -1;
-    let bestScore = Infinity;
-    this.buttons.forEach((button, index) => {
-      if (button.disabled || index === this.focusIndex) return;
-      const [x, y] = centre(button.getBoundingClientRect());
-      const along = { up: fy - y, down: y - fy, left: fx - x, right: x - fx }[direction];
-      const across =
-        direction === 'up' || direction === 'down' ? Math.abs(x - fx) : Math.abs(y - fy);
-      if (along <= 1) return;
-      const score = along + across * 2;
-      if (score < bestScore) {
-        bestScore = score;
-        best = index;
-      }
-    });
-    // In a single column, left and right step through the list like up and down.
-    if (best < 0 && (direction === 'left' || direction === 'right')) {
-      this.move(direction === 'left' ? 'up' : 'down');
+    const adjust = this.actions[this.focusIndex]?.adjust;
+    if (adjust && (direction === 'left' || direction === 'right')) {
+      this.sound();
+      adjust(direction === 'left' ? -1 : 1);
+      this.refresh();
       return;
     }
-    if (best < 0) best = this.wrap(direction);
-    if (best >= 0 && best !== this.focusIndex) this.sound();
-    if (best >= 0) this.focus(best);
+    const next = nextButton(this.buttons, this.focusIndex, direction);
+    if (next >= 0 && next !== this.focusIndex) this.sound();
+    if (next >= 0) this.focus(next);
   }
 
-  /** Off the edge: up and left go to the last enabled button, down and right to the first. */
-  private wrap(direction: Direction): number {
-    const enabled = this.buttons.flatMap((button, index) => (button.disabled ? [] : [index]));
-    const forward = direction === 'down' || direction === 'right';
-    return (forward ? enabled[0] : enabled[enabled.length - 1]) ?? -1;
+  /** Esc, B or a click beside the panel. */
+  private goBack(): void {
+    this.back?.();
   }
 
-  /** A menu command from the gamepad: D-pad moves, A chooses, B and Start close (§8). */
+  /** A menu command from the gamepad: D-pad moves, A chooses, B and Start go back (§8). */
   command(command: MenuCommand): void {
     if (!this.isOpen) return;
     if (command === 'confirm') this.buttons[this.focusIndex]?.click();
-    else if (command === 'back' || command === 'pause') this.close();
+    else if (command === 'back' || command === 'pause') this.goBack();
     else this.move(command);
   }
 
   private onKey(event: KeyboardEvent): void {
     if (!this.isOpen || event.repeat) return;
+    if (isEditable(event.target)) {
+      // Typing a seed: the keys are letters, not menu moves; Esc leaves the field.
+      if (event.code === 'Escape' && event.target instanceof HTMLElement) event.target.blur();
+      return;
+    }
     const direction = DIRECTIONS[event.code];
-    if (event.code === 'Escape' || event.code === 'KeyE') this.close();
+    if (event.code === 'Escape' || event.code === 'KeyE') this.goBack();
     else if (direction) this.move(direction);
     else if (event.code === 'Enter' || event.code === 'Space')
       this.buttons[this.focusIndex]?.click();
