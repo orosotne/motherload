@@ -1,0 +1,24 @@
+{
+  "name": "hlbina",
+  "private": true,
+  "version": "0.0.0",
+  "description": "HLBINA: a 2.5D dig, sell and upgrade game.",
+  "type": "module",
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5"
+  }
+}
