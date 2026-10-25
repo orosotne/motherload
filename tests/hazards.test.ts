@@ -6,6 +6,7 @@ import type { GameEvents } from '../src/sim/events';
 import { createGame, defaultSettings } from '../src/sim/game';
 import { stepHeat } from '../src/sim/hazards';
 import { createPod } from '../src/sim/pod';
+import { statsFor } from '../src/sim/stats';
 import { DT, gridFrom, Sim } from './helpers/sim';
 
 const GAS_WORLD = ['...', '#G#', '###', '###'];
@@ -24,6 +25,24 @@ describe('gas pockets (§7, §5.11)', () => {
     // The press that started it does not restart it through the input buffer.
     sim.hold([], 10);
     expect(sim.events('GasHiss')).toHaveLength(1);
+  });
+
+  it('keeps the full 0.3 s to let go even with the fastest drill', () => {
+    // T6 drill in clay: 1.4 × 0.19 = 0.266 s, faster than the window.
+    const rows = Array<string>(60).fill('###');
+    rows[50] = '...';
+    rows[51] = '#G#';
+    const fast = (): Sim => {
+      const sim = new Sim(gridFrom(rows), 1, 50);
+      sim.state.tiers.drill = 5;
+      sim.state.stats = statsFor(sim.state.tiers);
+      return sim;
+    };
+    const late = fast().hold(['down'], 17).hold([], 1);
+    expect(late.events('Explosion')).toEqual([]);
+    expect(late.events('DrillAborted')).toHaveLength(1);
+    const held = fast().hold(['down'], 30);
+    expect(held.events('Explosion')).toHaveLength(1);
   });
 
   it('a tap never gets through: the drilling stops on the next tick', () => {
